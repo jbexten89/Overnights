@@ -235,6 +235,9 @@ input[type="date"].inp.blank{color:var(--faint)}
 .hz .hrt{width:13.6px;height:13.6px;vertical-align:-2px}
 .vh h1{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
 body.rev .vh h1::after{content:"";display:inline-block;width:18.7px;height:18.7px;margin-left:8px;vertical-align:super;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23E5484D' d='M12%2021.35l-1.45-1.32C5.4%2015.36%202%2012.28%202%208.5%202%205.42%204.42%203%207.5%203c1.74%200%203.41.81%204.5%202.09C13.09%203.81%2014.76%203%2016.5%203%2019.58%203%2022%205.42%2022%208.5c0%203.78-3.4%206.86-8.55%2011.54L12%2021.35z'/%3E%3C/svg%3E") no-repeat center/contain}
+#view-settings .card{padding:14px 14px 16px;margin-bottom:10px}
+#view-settings .card h2{margin-bottom:10px}
+#view-settings .vh{margin-bottom:12px}
 .foot{text-align:center;color:var(--faint);font-size:12px;margin-top:18px;line-height:1.5}
 </style>
 </head>
@@ -754,35 +757,33 @@ function renderHistoryList() {
    ========================================================= */
 function renderSettings() {
   const s = S.settings;
-  const lb = S.lastBackup ? `${new Date(S.lastBackup).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} (${plural(Math.floor((Date.now() - S.lastBackup) / 864e5), 'day')} ago)` : 'Never';
-  const hours = Array.from({ length: 9 }, (_, h) => `<option value="${h}" ${s.rollover === h ? 'selected' : ''}>${h === 0 ? 'Midnight (no grace period)' : h + ':00 AM'}</option>`).join('');
+  const lb = S.lastBackup ? `${new Date(S.lastBackup).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · ${plural(Math.floor((Date.now() - S.lastBackup) / 864e5), 'day')} ago` : 'Never';
+  const hours = Array.from({ length: 9 }, (_, h) => `<option value="${h}" ${s.rollover === h ? 'selected' : ''}>${h === 0 ? '12 AM' : h + ' AM'}</option>`).join('');
   $('#view-settings').innerHTML = `
     <header class="vh"><div><h1>Settings</h1></div></header>
     ${backupBanner()}
     <div class="card"><h2>Names</h2>
-      <label class="f" for="nMe">You</label><input class="inp" id="nMe" value="${esc(s.me)}" maxlength="20" autocomplete="off">
-      <label class="f" for="nThem">Partner</label><input class="inp" id="nThem" value="${esc(s.them)}" maxlength="20" autocomplete="off">
-      ${revealed ? `<label class="f" for="hLab">Marker label</label><input class="inp" id="hLab" value="${esc(hLabel())}" maxlength="20" autocomplete="off">` : ''}
-      <p class="muted small" style="margin-top:10px">Labels update everywhere — e.g. “${esc(at('them'))}”.</p></div>
+      <div class="grid2">
+        <label><span class="dl">You</span><input class="inp" id="nMe" value="${esc(s.me)}" maxlength="20" autocomplete="off"></label>
+        <label><span class="dl">Partner</span><input class="inp" id="nThem" value="${esc(s.them)}" maxlength="20" autocomplete="off"></label></div>
+      ${revealed ? `<label style="display:block;margin-top:10px"><span class="dl">Marker label</span><input class="inp" id="hLab" value="${esc(hLabel())}" maxlength="20" autocomplete="off"></label>` : ''}</div>
 
     <div class="card"><h2>Calendar</h2>
-      <label class="f">Week starts on</label>
-      <div class="seg"><button data-act="ws" data-v="0" class="${s.weekStart === 0 ? 'on' : ''}">Sunday</button>
-        <button data-act="ws" data-v="1" class="${s.weekStart === 1 ? 'on' : ''}">Monday</button></div>
-      <label class="f" for="roll">“Tonight” rolls over at</label>
-      <select class="inp" id="roll">${hours}</select>
-      <p class="muted small" style="margin-top:8px">Logging before this time counts as the previous night.</p></div>
+      <div class="grid2">
+        <div><span class="dl">Week starts</span>
+          <div class="seg"><button data-act="ws" data-v="0" class="${s.weekStart === 0 ? 'on' : ''}">Sun</button>
+          <button data-act="ws" data-v="1" class="${s.weekStart === 1 ? 'on' : ''}">Mon</button></div></div>
+        <label><span class="dl">New night at</span><select class="inp" id="roll">${hours}</select></label></div></div>
 
-    <div class="card"><h2>Data</h2>
-      <div class="row between small" style="margin-bottom:12px"><span class="muted">Last backup</span><b>${esc(lb)}</b></div>
-      <div class="btnrow" style="margin-bottom:8px">
-        <button class="btn primary" data-act="export-json">Export JSON</button>
-        <button class="btn" data-act="export-csv">Export CSV</button></div>
-      <button class="btn block" data-act="import" style="margin-bottom:8px">Import JSON…</button>
-      <button class="btn danger block" data-act="clear">Clear all data</button>
-      <p class="muted small" style="margin-top:10px">JSON exports can be re-imported; CSV is for spreadsheets.</p></div>
+    <div class="card"><div class="row between" style="margin-bottom:10px"><h2 style="margin:0">Data</h2>
+        <span class="small muted">Last backup: <b style="color:var(--text)">${esc(lb)}</b></span></div>
+      <div class="grid3" style="margin-bottom:8px">
+        <button class="btn primary" data-act="export-json">Backup</button>
+        <button class="btn" data-act="export-csv">CSV</button>
+        <button class="btn" data-act="import">Import</button></div>
+      <button class="btn danger block" data-act="clear">Clear all data</button></div>
 
-    <p class="foot">Data is stored only on this device, in this browser.<br>Nothing is sent anywhere.</p>`;
+    <p class="foot" style="margin-top:6px">Data stays on this device. Nothing is sent anywhere.</p>`;
 
   const setName = (k, el) => { const v = el.value.trim(); if (v) S.settings[k] = v; save(); };
   $('#nMe').onchange = e => { setName('me', e.target); renderSettings(); };
