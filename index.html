@@ -238,6 +238,18 @@ body.rev .vh h1::after{content:"";display:inline-block;width:18.7px;height:18.7p
 #view-settings .card{padding:14px 14px 16px;margin-bottom:10px}
 #view-settings .card h2{margin-bottom:10px}
 #view-settings .vh{margin-bottom:12px}
+/* swipe rows (history) */
+.sw{position:relative;overflow:hidden;border-top:1px solid var(--border)}
+.sw:first-child{border-top:0}
+.sw .item{position:relative;z-index:1;background:var(--panel);border-top:0;touch-action:pan-y;will-change:transform}
+.sw-bg{position:absolute;inset:2px 0;display:flex;align-items:center;justify-content:space-between;padding:0 16px;font-weight:900;font-size:14px;border-radius:12px;transition:background .12s}
+.sw-bg span{opacity:0;transition:opacity .1s}
+.sw.to-sw .sw-bg{background:rgba(60,199,154,.16)} .sw.to-sw .sw-l{opacity:1;color:var(--accent)}
+.sw.to-del .sw-bg{background:rgba(229,103,92,.16)} .sw.to-del .sw-r{opacity:1;color:var(--danger)}
+.sw.armed.to-sw .sw-bg{background:var(--accent)} .sw.armed.to-sw .sw-l{color:#06140F}
+.sw.armed.to-del .sw-bg{background:var(--danger)} .sw.armed.to-del .sw-r{color:#fff}
+/* share card */
+.share-img{display:block;width:100%;border-radius:16px;border:1px solid var(--border-2);margin-top:14px;background:var(--bg);aspect-ratio:4/5}
 .foot{text-align:center;color:var(--faint);font-size:12px;margin-top:18px;line-height:1.5}
 </style>
 </head>
@@ -593,6 +605,7 @@ function attachSwipe(el) {
 function renderStats() {
   const tot = totals(), s = S.settings;
   let h = `<header class="vh"><div><h1>Stats</h1><p class="sub">${plural(tot.all, 'night')} together${tot.apart ? ` · ${tot.apart} apart` : ''}</p></div></header>`;
+  h = h.replace('</div></header>', `</div><button class="btn" data-act="share" ${tot.all || tot.apart ? '' : 'disabled'}>Share</button></header>`);
   if (!tot.all && !tot.apart) {
     $('#view-stats').innerHTML = h + `<div class="card empty"><div class="moon">📊</div><b>Nothing to chart yet</b>Log a few nights and your stats will show up here.</div>`;
     return;
@@ -719,7 +732,63 @@ function renderHistory() {
   $('#hFrom').onchange = e => { H.from = e.target.value; renderHistory(); };
   $('#hTo').onchange = e => { H.to = e.target.value; renderHistory(); };
   $('#hQ').oninput = e => { H.q = e.target.value; renderHistoryList(); };
+  attachRowSwipe($('#histList'));
   renderHistoryList();
+}
+
+function swipeRow(d) {
+  const e = S.entries[d], tog = together(e);
+  return `<div class="sw ${tog ? '' : 'no-sw'}"><div class="sw-bg">
+    <span class="sw-l">${tog ? '⇄ ' + esc(poss(nameOf(other(e.loc)))) : ''}</span><span class="sw-r">Delete</span></div>${itemRow(d)}</div>`;
+}
+
+/* Mail-style swipe: right = switch place, left = delete (both undoable) */
+let suppressClick = 0;
+function attachRowSwipe(list) {
+  const TH = 90;
+  let row = null, x0 = 0, y0 = 0, dx = 0, mode = null;
+  const reset = sw => sw.classList.remove('armed', 'to-del', 'to-sw');
+  list.addEventListener('touchstart', e => {
+    const it = e.target.closest('.sw .item'); if (!it) return;
+    row = it; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; mode = null;
+    row.style.transition = 'none';
+  }, { passive: true });
+  list.addEventListener('touchmove', e => {
+    if (!row) return;
+    const mx = e.touches[0].clientX - x0, my = e.touches[0].clientY - y0;
+    if (!mode) {
+      if (Math.abs(mx) > 10 && Math.abs(mx) > Math.abs(my)) mode = 'h';
+      else if (Math.abs(my) > 10) { mode = 'v'; row = null; return; }
+    }
+    if (mode !== 'h') return;
+    e.preventDefault();
+    const sw = row.parentElement, canSwitch = !sw.classList.contains('no-sw');
+    dx = mx > 0 && !canSwitch ? mx / 4 : mx;           // apart nights can't switch: rubber-band
+    sw.classList.toggle('to-del', dx < 0);
+    sw.classList.toggle('to-sw', dx > 0 && canSwitch);
+    sw.classList.toggle('armed', Math.abs(dx) > TH && (dx < 0 || canSwitch));
+    row.style.transform = `translateX(${dx}px)`;
+  }, { passive: false });
+  const end = () => {
+    if (!row) return;
+    const r = row, sw = r.parentElement, d = r.dataset.date;
+    row = null;
+    if (mode !== 'h') return;
+    suppressClick = Date.now();
+    r.style.transition = 'transform .18s ease';
+    if (dx < -TH) {
+      r.style.transform = 'translateX(-110%)';
+      setTimeout(() => mutate([d], () => delete S.entries[d], `Deleted ${fmtShort(d)}`), 170);
+    } else if (dx > TH && together(S.entries[d])) {
+      const e = S.entries[d], to = other(e.loc);
+      r.style.transform = 'translateX(0)';
+      setTimeout(() => mutate([d], () => { S.entries[d] = { ...e, loc: to, updated: Date.now() }; }, `${fmtShort(d)} · ${at(to)}`), 170);
+    } else {
+      r.style.transform = 'translateX(0)'; reset(sw);
+    }
+  };
+  list.addEventListener('touchend', end);
+  list.addEventListener('touchcancel', end);
 }
 
 function renderHistoryList() {
@@ -744,11 +813,12 @@ function renderHistoryList() {
     if (!group.length) return;
     const [y, m] = cur.split('-').map(Number);
     h += `<div class="month-h"><span>${esc(monthName(y, m - 1))}</span><span>${group.length}</span></div>
-      <div class="card" style="padding:4px 14px"><div class="list">${group.map(itemRow).join('')}</div></div>`;
+      <div class="card" style="padding:4px 14px"><div class="list">${group.map(swipeRow).join('')}</div></div>`;
     group = [];
   };
   for (const d of ds) { const k = d.slice(0, 7); if (k !== cur) { flush(); cur = k; } group.push(d); }
   flush();
+  h += `<p class="foot">Swipe a night right to switch place · left to delete</p>`;
   $('#histList').innerHTML = h;
 }
 
@@ -855,6 +925,143 @@ function deleteEntry(d) {
 }
 
 /* =========================================================
+   SHARE CARD (an image to text/AirDrop — never includes hearts)
+   ========================================================= */
+let shareP = 'month', shareCanvas = null;
+const SHARE_P = [['month', 'This month'], ['last', 'Last month'], ['year', 'This year'], ['all', 'All time']];
+
+function periodRange(p) {
+  const t = tonight(), y = +t.slice(0, 4), m = +t.slice(5, 7);
+  if (p === 'month') return { from: `${y}-${pad(m)}-01`, to: t, title: monthName(y, m - 1), kind: 'month', y, m };
+  if (p === 'last') {
+    const d = new Date(y, m - 2, 1), ly = d.getFullYear(), lm = d.getMonth() + 1;
+    return { from: `${ly}-${pad(lm)}-01`, to: `${ly}-${pad(lm)}-${pad(new Date(ly, lm, 0).getDate())}`, title: monthName(ly, lm - 1), kind: 'month', y: ly, m: lm };
+  }
+  if (p === 'year') return { from: `${y}-01-01`, to: t, title: String(y), kind: 'year', y };
+  return { from: sortedDates()[0] || t, to: t, title: 'All time', kind: 'all' };
+}
+function periodStats(r) {
+  let me = 0, them = 0, apart = 0, best = 0, run = 0, prev = null;
+  const wd = [0, 0, 0, 0, 0, 0, 0];
+  for (const d of sortedDates()) {
+    if (d < r.from || d > r.to) continue;
+    const e = S.entries[d];
+    if (!together(e)) { apart++; continue; }
+    e.loc === 'me' ? me++ : them++;
+    wd[parse(d).getDay()]++;
+    run = prev && diffDays(prev, d) === 1 ? run + 1 : 1; prev = d; best = Math.max(best, run);
+  }
+  const wmax = Math.max(...wd);
+  return { me, them, apart, all: me + them, best, fav: wmax ? WD[wd.indexOf(wmax)] : '—' };
+}
+
+function rrect(x, X, Y, W, H, R) {
+  x.beginPath(); x.moveTo(X + R, Y); x.arcTo(X + W, Y, X + W, Y + H, R); x.arcTo(X + W, Y + H, X, Y + H, R);
+  x.arcTo(X, Y + H, X, Y, R); x.arcTo(X, Y, X + W, Y, R); x.closePath();
+}
+function crescent(x, cx, cy, r) {
+  const c = document.createElement('canvas'); c.width = c.height = r * 3; const k = c.getContext('2d');
+  k.fillStyle = '#F6E7C1'; k.beginPath(); k.arc(r * 1.4, r * 1.6, r, 0, Math.PI * 2); k.fill();
+  k.globalCompositeOperation = 'destination-out'; k.beginPath(); k.arc(r * 1.85, r * 1.25, r * .88, 0, Math.PI * 2); k.fill();
+  x.drawImage(c, cx - r * 1.4, cy - r * 1.6);
+}
+
+async function drawShareCard(p) {
+  try { await document.fonts.ready; } catch (e) {}
+  const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d'), r = periodRange(p), st = periodStats(r);
+  const F = '"Nunito Sans", "Avenir Next", Avenir, sans-serif';
+  const TEXT = '#E6E8EB', MUTED = '#8A9099', ME = '#3CC79A', THEM = '#A78BFA', APART = '#7A818C', PANEL = '#111317', PANEL2 = '#171A1F';
+  const L = 90, BW = W - 180;
+
+  // background + soft moonlight glow
+  x.fillStyle = '#07080A'; x.fillRect(0, 0, W, H);
+  const g = x.createRadialGradient(W * .75, 120, 10, W * .75, 120, 760);
+  g.addColorStop(0, 'rgba(246,231,193,.10)'); g.addColorStop(1, 'rgba(246,231,193,0)');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+
+  // header
+  crescent(x, L + 22, 118, 26);
+  x.textBaseline = 'middle'; x.fillStyle = MUTED; x.font = `800 32px ${F}`; x.fillText('OVERNIGHTS', L + 64, 120);
+  x.textBaseline = 'alphabetic'; x.fillStyle = TEXT; x.font = `900 78px ${F}`; x.fillText(r.title, L, 270);
+
+  // big number
+  x.font = `900 300px ${F}`; x.fillStyle = TEXT; x.fillText(String(st.all), L - 8, 570);
+  const nw = x.measureText(String(st.all)).width;
+  x.font = `800 50px ${F}`; x.fillStyle = MUTED;
+  x.fillText(st.all === 1 ? 'night' : 'nights', L + nw + 28, 500); x.fillText('together', L + nw + 28, 560);
+
+  // split bar
+  const by = 640, bh = 40;
+  x.save(); rrect(x, L, by, BW, bh, 20); x.clip(); x.fillStyle = PANEL2; x.fillRect(L, by, BW, bh);
+  if (st.all) { const wT = BW * st.them / st.all; x.fillStyle = THEM; x.fillRect(L, by, wT, bh); x.fillStyle = ME; x.fillRect(L + wT, by, BW - wT, bh); }
+  x.restore();
+  x.font = `800 40px ${F}`;
+  x.fillStyle = THEM; x.textAlign = 'left'; x.fillText(`${st.them} at ${poss(S.settings.them || 'Partner')}`, L, 740);
+  x.fillStyle = ME; x.textAlign = 'right'; x.fillText(`${st.me} at ${S.settings.me ? poss(S.settings.me) : 'mine'}`, L + BW, 740);
+  x.textAlign = 'left';
+
+  // three tiles
+  const ty = 800, th = 180, gap = 24, tw = (BW - gap * 2) / 3;
+  [[String(st.best), 'longest streak'], [String(st.apart), st.apart === 1 ? 'night apart' : 'nights apart'], [st.fav, 'favorite night']].forEach(([v, l], i) => {
+    const tx = L + i * (tw + gap);
+    rrect(x, tx, ty, tw, th, 28); x.fillStyle = PANEL; x.fill(); x.strokeStyle = '#1F232A'; x.lineWidth = 2; x.stroke();
+    x.fillStyle = TEXT; x.font = `900 78px ${F}`; x.fillText(v, tx + 28, ty + 100);
+    x.fillStyle = MUTED; x.font = `700 28px ${F}`; x.fillText(l, tx + 28, ty + 148);
+  });
+
+  // pattern: each night of the month, or nights per month
+  const py = 1040;
+  if (r.kind === 'month') {
+    const days = new Date(r.y, r.m, 0).getDate(), cg = 5, cw = (BW - cg * (days - 1)) / days;
+    for (let d = 1; d <= days; d++) {
+      const key = `${r.y}-${pad(r.m)}-${pad(d)}`, e = S.entries[key];
+      rrect(x, L + (d - 1) * (cw + cg), py + 40, cw, 110, Math.min(8, cw / 2));
+      x.fillStyle = !e ? PANEL2 : e.loc === 'me' ? ME : e.loc === 'them' ? THEM : APART;
+      x.globalAlpha = key > tonight() ? .35 : 1; x.fill(); x.globalAlpha = 1;
+    }
+    x.fillStyle = MUTED; x.font = `700 26px ${F}`; x.fillText('1', L, py + 190);
+    x.textAlign = 'right'; x.fillText(String(days), L + BW, py + 190); x.textAlign = 'left';
+  } else {
+    const t = tonight(), months = [];
+    const endY = r.kind === 'year' ? r.y : +t.slice(0, 4), endM = r.kind === 'year' ? 12 : +t.slice(5, 7);
+    for (let i = 11; i >= 0; i--) { const d = new Date(endY, endM - 1 - i, 1); months.push({ k: `${d.getFullYear()}-${pad(d.getMonth() + 1)}`, l: 'JFMAMJJASOND'[d.getMonth()], me: 0, them: 0 }); }
+    const idx = Object.fromEntries(months.map((m, i) => [m.k, i]));
+    for (const [d, e] of Object.entries(S.entries)) { const i = idx[d.slice(0, 7)]; if (i !== undefined && together(e) && d >= r.from && d <= r.to) months[i][e.loc]++; }
+    const mx = Math.max(1, ...months.map(m => m.me + m.them)), cg = 14, cw = (BW - cg * 11) / 12, mh = 150;
+    months.forEach((m, i) => {
+      const n = m.me + m.them, cx = L + i * (cw + cg), hT = mh * m.them / mx, hM = mh * m.me / mx;
+      x.save(); rrect(x, cx, py, cw, mh, 10); x.clip(); x.fillStyle = PANEL2; x.fillRect(cx, py, cw, mh);
+      x.fillStyle = ME; x.fillRect(cx, py + mh - hM, cw, hM); x.fillStyle = THEM; x.fillRect(cx, py + mh - hM - hT, cw, hT); x.restore();
+      x.fillStyle = MUTED; x.font = `800 26px ${F}`; x.textAlign = 'center'; x.fillText(m.l, cx + cw / 2, py + mh + 40); x.textAlign = 'left';
+    });
+  }
+
+  // footer
+  const names = S.settings.me && S.settings.them ? `${S.settings.me} & ${S.settings.them}` : '';
+  x.fillStyle = MUTED; x.font = `700 30px ${F}`; x.textAlign = 'center'; x.fillText(names, W / 2, H - 50); x.textAlign = 'left';
+  return c;
+}
+
+async function openShare() {
+  ed = null;
+  $('#sheetBody').innerHTML = `<div class="grab"></div><h3>Share card</h3>
+    <div class="seg" style="margin-top:12px" id="shareSeg">${SHARE_P.map(([k, l]) => `<button data-act="share-p" data-v="${k}" class="${shareP === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <img class="share-img" id="shareImg" alt="Share card preview">
+    <div class="actions"><button class="btn ghost" data-act="share-close">Close</button><button class="btn primary" data-act="share-go">Share</button></div>`;
+  $('#sheet').classList.add('open');
+  await renderShare();
+}
+async function renderShare() {
+  shareCanvas = await drawShareCard(shareP);
+  const img = $('#shareImg'); if (img) img.src = shareCanvas.toDataURL('image/png');
+}
+function sendShare() {
+  if (!shareCanvas) return;
+  shareCanvas.toBlob(b => { if (b) shareOrDownload(`overnights-${shareP}-${ymd(new Date())}.png`, b, 'image/png'); }, 'image/png');
+}
+
+/* =========================================================
    DIALOG + TOAST
    ========================================================= */
 function dialog({ title, msg, buttons }) {
@@ -886,7 +1093,7 @@ function toast(msg, undo) {
    EXPORT / IMPORT / CLEAR
    ========================================================= */
 async function shareOrDownload(name, text, type) {
-  const blob = new Blob([text], { type });
+  const blob = text instanceof Blob ? text : new Blob([text], { type });
   try {
     const file = new File([blob], name, { type });
     if (matchMedia('(pointer:coarse)').matches && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -983,6 +1190,7 @@ function rerender() {
 }
 
 document.addEventListener('click', e => {
+  if (Date.now() - suppressClick < 400 && e.target.closest('.sw')) return; // a swipe isn't a tap
   const el = e.target.closest('[data-act]'); if (!el) return;
   const a = el.dataset.act, d = el.dataset.date;
   switch (a) {
@@ -1003,6 +1211,10 @@ document.addEventListener('click', e => {
     case 'heart': setTonightHearts(+el.dataset.d); break;
     case 'ed-heart': ed.hearts = Math.max(0, Math.min(99, ed.hearts + +el.dataset.d)); el.parentElement.querySelector('.hv').innerHTML = HRT + ' ' + ed.hearts; break;
     case 'ed-save': saveEditor(); break;
+    case 'share': openShare(); break;
+    case 'share-p': shareP = el.dataset.v; document.querySelectorAll('#shareSeg button').forEach(b => b.classList.toggle('on', b === el)); renderShare(); break;
+    case 'share-go': sendShare(); break;
+    case 'share-close': closeSheet(); break;
     case 'ed-del': deleteEntry(ed.orig); break;
     case 'ed-cancel': closeSheet(); break;
     case 'export-json': exportJSON(); break;
