@@ -36,7 +36,8 @@
   --me:#3CC79A;              /* at my place (mint)          */
   --them:#A78BFA;            /* at partner's place (lavender) */
   --amber:#E3A04F;
-  --apart:#7A818C;            /* apart nights (neutral grey) */
+  --apart:#7A818C;
+  --heart:#E5484D;            /* hearts (red) */            /* apart nights (neutral grey) */
   --danger:#E5675C;
   --radius:18px;
   --tab-h:64px;
@@ -223,15 +224,15 @@ input[type="date"].inp.blank{color:var(--faint)}
 #toast button{background:#07080A;color:var(--accent);border-radius:10px;min-height:36px;padding:0 12px;font-weight:900}
 
 /* hearts */
-.hz{position:absolute;top:4px;right:5px;font-size:10px;font-weight:900;color:#F08DA8;line-height:1}
+.hz{position:absolute;top:4px;right:5px;font-size:10px;font-weight:900;color:var(--heart);line-height:1}
 .heart-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 14px;padding:10px 12px;background:var(--panel-2);border:1px solid var(--border-2);border-radius:14px}
 .heart-row .hl{font-weight:800;color:var(--muted);font-size:14px}
 .stepper{display:flex;align-items:center;gap:6px}
 .stepper button{width:44px;height:44px;border-radius:12px;background:var(--panel);border:1px solid var(--border-2);font-size:20px;font-weight:900}
-.stepper .hv{min-width:44px;text-align:center;font-weight:900;font-size:20px;color:#F08DA8}
-.c-heart{color:#F08DA8}
+.stepper .hv{min-width:44px;text-align:center;font-weight:900;font-size:20px;color:var(--heart)}
+.c-heart{color:var(--heart)}
 .vh h1{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
-body.rev .vh h1::after{content:"♥";font-size:13px;color:#F08DA8;margin-left:6px;vertical-align:super}
+body.rev .vh h1::after{content:"\2665\FE0E";font-size:13px;color:var(--heart);margin-left:6px;vertical-align:super}
 .foot{text-align:center;color:var(--faint);font-size:12px;margin-top:18px;line-height:1.5}
 </style>
 </head>
@@ -347,7 +348,7 @@ const hLabel = () => S.settings.heartLabel || 'Hearts';
 /* Hearts are hidden unless revealed (hold any screen title ~1s). Not saved — re-hides when you leave the app. */
 let revealed = false;
 const stepper = (act, n) => `<div class="stepper"><button data-act="${act}" data-d="-1" aria-label="Less">−</button>
-  <span class="hv">♥ ${n}</span><button data-act="${act}" data-d="1" aria-label="More">+</button></div>`;
+  <span class="hv">♥︎ ${n}</span><button data-act="${act}" data-d="1" aria-label="More">+</button></div>`;
 function setTonightHearts(delta) {
   const t = tonight(), e = S.entries[t]; if (!together(e)) return;
   e.hearts = Math.max(0, Math.min(99, hearts(e) + delta)); e.updated = Date.now();
@@ -526,7 +527,7 @@ function turnCard() {
 function itemRow(d) {
   const e = S.entries[d];
   return `<button class="item" data-act="edit" data-date="${d}">${badge(e.loc)}
-    <div style="min-width:0"><div class="t">${esc(fmtRow(d))}</div><div class="n">${esc(at(e.loc))}${reasonTxt(e) ? ' · ' + esc(reasonTxt(e)) : ''}${revealed && hearts(e) ? ` · <span class="c-heart">♥ ${hearts(e)}</span>` : ''}${e.note ? ' · ' + esc(e.note) : ''}</div></div>
+    <div style="min-width:0"><div class="t">${esc(fmtRow(d))}</div><div class="n">${esc(at(e.loc))}${reasonTxt(e) ? ' · ' + esc(reasonTxt(e)) : ''}${revealed && hearts(e) ? ` · <span class="c-heart">♥︎ ${hearts(e)}</span>` : ''}${e.note ? ' · ' + esc(e.note) : ''}</div></div>
     <span class="chev">›</span></button>`;
 }
 
@@ -547,7 +548,7 @@ function renderCalendar() {
     if (e) e.loc === 'me' ? me++ : e.loc === 'them' ? them++ : apart++;
     const cls = ['day', e ? e.loc : '', key === t ? 'today' : '', key > t ? 'future' : ''].join(' ');
     cells += `<button class="${cls}" data-act="day" data-date="${key}" aria-label="${esc(fmtRow(key))}${e ? ', ' + esc(at(e.loc)) : ''}">
-      <span class="dn">${d}</span>${revealed && hearts(e) ? `<span class="hz">♥${hearts(e) > 1 ? hearts(e) : ''}</span>` : ''}${e ? `<span class="L">${esc(letter(e.loc))}</span>` : ''}${e?.note ? '<span class="dot"></span>' : ''}</button>`;
+      <span class="dn">${d}</span>${revealed && hearts(e) ? `<span class="hz">♥︎${hearts(e) > 1 ? hearts(e) : ''}</span>` : ''}${e ? `<span class="L">${esc(letter(e.loc))}</span>` : ''}${e?.note ? '<span class="dot"></span>' : ''}</button>`;
   }
   const heads = Array.from({ length: 7 }, (_, i) => `<div>${WD[(i + ws) % 7]}</div>`).join('');
   $('#view-calendar').innerHTML = `
@@ -666,10 +667,10 @@ function renderStats() {
           <div><div class="num md c-heart">${hYear}</div><div class="lbl">This year</div></div>
           <div><div class="num md c-heart">${(h28 / 4).toFixed(1)}</div><div class="lbl">Per week (4 wk)</div></div></div>
         <div class="chart" style="height:110px">${hm.map((n, i) => `<div class="col ${i === 11 ? 'cur' : ''}"><div class="v">${n || ''}</div>
-          <div class="stack" style="height:${Math.max(n / hmax * 100, n ? 4 : 2)}%">${n ? '<div style="height:100%;background:#F08DA8"></div>' : ''}</div>
+          <div class="stack" style="height:${Math.max(n / hmax * 100, n ? 4 : 2)}%">${n ? '<div style="height:100%;background:var(--heart)"></div>' : ''}</div>
           <div class="m">${esc(months[i].lab)}</div></div>`).join('')}</div>
         <div class="row between small muted" style="font-weight:800;margin-top:12px">
-          <span>${badge('them')} ♥ ${hThem}</span><span>${hAll} all-time</span><span>♥ ${hMe} ${badge('me')}</span></div></div>`;
+          <span>${badge('them')} <span class="c-heart">♥︎</span> ${hThem}</span><span>${hAll} all-time</span><span><span class="c-heart">♥︎</span> ${hMe} ${badge('me')}</span></div></div>`;
     }
   }
 
@@ -758,7 +759,7 @@ function renderSettings() {
     <div class="card"><h2>Names</h2>
       <label class="f" for="nMe">You</label><input class="inp" id="nMe" value="${esc(s.me)}" maxlength="20" autocomplete="off">
       <label class="f" for="nThem">Partner</label><input class="inp" id="nThem" value="${esc(s.them)}" maxlength="20" autocomplete="off">
-      ${revealed ? `<label class="f" for="hLab">♥ marker label</label><input class="inp" id="hLab" value="${esc(hLabel())}" maxlength="20" autocomplete="off">` : ''}
+      ${revealed ? `<label class="f" for="hLab">♥︎ marker label</label><input class="inp" id="hLab" value="${esc(hLabel())}" maxlength="20" autocomplete="off">` : ''}
       <p class="muted small" style="margin-top:10px">Labels update everywhere — e.g. “${esc(at('them'))}”.</p></div>
 
     <div class="card"><h2>Calendar</h2>
@@ -996,7 +997,7 @@ document.addEventListener('click', e => {
     case 'ed-reason': ed.reason = ed.reason === el.dataset.v ? '' : el.dataset.v; renderEditor(); break;
     case 'reason': { const t = tonight(), ex = S.entries[t]; if (ex && ex.loc === 'apart') { ex.reason = ex.reason === el.dataset.v ? '' : el.dataset.v; ex.updated = Date.now(); save(); rerender(); } break; }
     case 'heart': setTonightHearts(+el.dataset.d); break;
-    case 'ed-heart': ed.hearts = Math.max(0, Math.min(99, ed.hearts + +el.dataset.d)); el.parentElement.querySelector('.hv').textContent = '♥ ' + ed.hearts; break;
+    case 'ed-heart': ed.hearts = Math.max(0, Math.min(99, ed.hearts + +el.dataset.d)); el.parentElement.querySelector('.hv').textContent = '♥︎ ' + ed.hearts; break;
     case 'ed-save': saveEditor(); break;
     case 'ed-del': deleteEntry(ed.orig); break;
     case 'ed-cancel': closeSheet(); break;
