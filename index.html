@@ -1,0 +1,1068 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Overnights</title>
+<meta name="description" content="Track overnight stays — who stayed where, streaks, and stats.">
+<meta name="theme-color" content="#07080A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Overnights">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+<style>
+/* =========================================================
+   THEME TOKENS (dark only)
+   ========================================================= */
+:root{
+  color-scheme: dark;
+  --bg:#07080A;
+  --panel:#111317;
+  --panel-2:#171A1F;
+  --border:#1F232A;
+  --border-2:#2A2F38;
+  --text:#E6E8EB;
+  --muted:#8A9099;
+  --faint:#5A606A;
+  --accent:#3CC79A;          /* primary (mint) */
+  --me:#3CC79A;              /* at my place (mint)          */
+  --them:#A78BFA;            /* at partner's place (lavender) */
+  --amber:#E3A04F;
+  --apart:#7A818C;            /* apart nights (neutral grey) */
+  --danger:#E5675C;
+  --radius:18px;
+  --tab-h:64px;
+  --font:"Nunito Sans","Avenir Next",Avenir,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+}
+
+/* =========================================================
+   BASE
+   ========================================================= */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);}
+body{min-height:100dvh;-webkit-font-smoothing:antialiased;overscroll-behavior-y:none}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+h1,h2,h3{margin:0;font-weight:900;letter-spacing:-.01em}
+p{margin:0}
+
+main{
+  max-width:560px;margin:0 auto;
+  padding: calc(env(safe-area-inset-top) + 18px) 16px calc(var(--tab-h) + env(safe-area-inset-bottom) + 28px);
+}
+.view{display:none;animation:fade .18s ease}
+.view.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+.vh{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:16px}
+.vh h1{font-size:30px}
+.sub{color:var(--muted);font-size:14px;font-weight:600;margin-top:2px}
+
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800;margin-bottom:12px}
+.row{display:flex;align-items:center;gap:10px}
+.between{justify-content:space-between}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.num{font-weight:900;font-size:38px;line-height:1;letter-spacing:-.02em}
+.num.md{font-size:28px}
+.lbl{color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:6px}
+
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:14px 12px}
+
+/* location colors */
+.c-me{color:var(--me)} .c-them{color:var(--them)} .c-apart{color:var(--apart)}
+.badge{display:inline-flex!important;align-items:center;justify-content:center;line-height:1;text-align:center;width:26px;height:26px;border-radius:8px;font-weight:900;font-size:13px;flex:none}
+.badge.me{background:rgba(60,199,154,.16);color:var(--me);border:1px solid rgba(60,199,154,.45)}
+.badge.them{background:rgba(167,139,250,.16);color:var(--them);border:1px solid rgba(167,139,250,.45)}
+.badge.apart{background:rgba(122,129,140,.14);color:var(--apart);border:1px solid rgba(122,129,140,.45)}
+
+/* buttons */
+.btn{min-height:44px;padding:0 16px;border-radius:12px;background:var(--panel-2);border:1px solid var(--border-2);font-weight:800;font-size:15px;transition:transform .08s ease, background .15s}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#06140F}
+.btn.danger{background:transparent;border-color:rgba(229,103,92,.5);color:var(--danger)}
+.btn.ghost{background:transparent;border-color:var(--border-2);color:var(--muted)}
+.btn.block{width:100%}
+.btn:disabled{opacity:.4}
+
+.big-choice{display:flex;align-items:center;gap:14px;width:100%;min-height:76px;padding:14px 16px;border-radius:16px;font-weight:900;font-size:19px;text-align:left;margin-top:10px;transition:transform .08s ease}
+.big-choice:active{transform:scale(.98)}
+.big-choice .badge{width:40px;height:40px;font-size:18px;border-radius:12px}
+.big-choice.them{background:rgba(167,139,250,.10);border:1px solid rgba(167,139,250,.45)}
+.big-choice.me{background:rgba(60,199,154,.10);border:1px solid rgba(60,199,154,.45)}
+.big-choice small{display:block;font-size:13px;font-weight:700;color:var(--muted);margin-top:2px}
+
+.logged{display:flex;align-items:center;gap:14px;margin:4px 0 14px}
+.logged .badge{width:52px;height:52px;font-size:22px;border-radius:14px}
+.logged .where{font-size:26px;font-weight:900;line-height:1.1}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btnrow .btn{flex:1}
+
+/* banner */
+.banner{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--amber);color:#1A1206;border-radius:14px;padding:12px 14px;margin-bottom:12px;font-weight:800;font-size:14px}
+.banner button{background:#1A1206;color:var(--amber);border-radius:10px;min-height:36px;padding:0 12px;font-weight:900;font-size:13px;flex:none}
+
+/* lists */
+.list{display:flex;flex-direction:column}
+.item{display:flex;align-items:center;gap:12px;padding:12px 2px;border-top:1px solid var(--border);text-align:left;width:100%;min-height:56px}
+.item:first-child{border-top:0}
+.item .t{font-weight:800}
+.item .n{color:var(--muted);font-size:13px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:62vw}
+.item .chev{margin-left:auto;color:var(--faint)}
+.month-h{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin:18px 2px 4px}
+
+.empty{text-align:center;padding:28px 12px;color:var(--muted)}
+.empty .moon{font-size:40px;margin-bottom:8px}
+.empty b{display:block;color:var(--text);font-size:18px;margin-bottom:4px}
+
+/* segmented control */
+.seg{display:flex;background:var(--panel-2);border:1px solid var(--border-2);border-radius:12px;padding:3px;gap:3px}
+.seg button{flex:1;min-height:40px;border-radius:9px;font-weight:800;font-size:14px;color:var(--muted)}
+.seg button.on{background:var(--panel);color:var(--text);box-shadow:0 0 0 1px var(--border-2)}
+.seg button.on.them{color:var(--them)} .seg button.on.me{color:var(--me)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.chip{min-height:38px;padding:0 12px;border-radius:999px;background:var(--panel-2);border:1px solid var(--border-2);font-weight:800;font-size:14px;color:var(--muted)}
+.chip.on{color:var(--text);border-color:var(--muted);background:var(--panel)}
+.apart-btn{margin-top:10px;width:100%;min-height:48px;border-radius:14px;border:1px dashed var(--border-2);color:var(--muted);font-weight:800;font-size:15px}
+.reunion{display:flex;align-items:center;gap:12px;background:rgba(60,199,154,.10);border:1px solid rgba(60,199,154,.45);border-radius:14px;padding:12px 14px;margin-bottom:12px;font-weight:800}
+.reunion .e{font-size:24px}
+.reunion b{color:var(--accent)}
+
+/* inputs */
+label.f{display:block;font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 6px}
+.inp{width:100%;min-height:44px;background:var(--panel-2);border:1px solid var(--border-2);border-radius:12px;padding:10px 12px;font-size:16px;outline:none}
+.inp:focus{border-color:var(--accent)}
+textarea.inp{min-height:80px;resize:vertical}
+/* iOS Safari date fields: kill the native min-width so they fit their column */
+.grid2 > *, .grid3 > *{min-width:0}
+input[type="date"].inp{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;width:100%;text-align:left}
+input[type="date"].inp::-webkit-date-and-time-value{text-align:left;margin:0}
+input[type="date"].inp::-webkit-calendar-picker-indicator{filter:invert(.7)}
+input[type="date"].inp.blank{color:var(--faint)}
+.dl{display:block;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:0 0 5px 2px}
+
+/* calendar */
+.cal-nav{display:flex;align-items:center;gap:8px}
+.icon-btn{width:44px;height:44px;border-radius:12px;background:var(--panel);border:1px solid var(--border);display:grid;place-items:center;font-size:20px;font-weight:900}
+.wk{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px}
+.wk div{text-align:center;font-size:11px;font-weight:800;color:var(--faint);text-transform:uppercase}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;touch-action:pan-y}
+.day{position:relative;aspect-ratio:1/1.08;min-height:44px;border-radius:12px;background:var(--panel);border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:14px}
+.day .dn{position:absolute;top:5px;left:7px;font-size:11px;color:var(--muted);font-weight:800}
+.day .L{font-size:17px;font-weight:900;margin-top:6px}
+.day.me{background:rgba(60,199,154,.14);border-color:rgba(60,199,154,.5)} .day.me .L{color:var(--me)}
+.day.them{background:rgba(167,139,250,.14);border-color:rgba(167,139,250,.5)} .day.them .L{color:var(--them)}
+.day.apart{background:rgba(122,129,140,.08);border-color:rgba(122,129,140,.35)} .day.apart .L{color:var(--apart)}
+.day.today{box-shadow:0 0 0 2px var(--text) inset}
+.day.future{opacity:.3;pointer-events:none}
+.day.pad{visibility:hidden}
+.day .dot{position:absolute;bottom:5px;right:6px;width:5px;height:5px;border-radius:50%;background:var(--muted)}
+.legend{display:flex;gap:16px;justify-content:center;margin-top:12px;font-size:13px;color:var(--muted);font-weight:700}
+.legend > span{display:flex;align-items:center;gap:6px}
+
+/* split bar */
+.split{display:flex;height:16px;border-radius:999px;overflow:hidden;background:var(--panel-2);margin:12px 0 10px}
+.split div{height:100%;transition:width .3s}
+
+/* month chart */
+.chart{display:flex;align-items:flex-end;gap:5px;height:150px;padding-top:16px}
+.col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
+.col .v{font-size:11px;font-weight:800;color:var(--muted);margin-bottom:3px;min-height:14px}
+.stack{width:100%;max-width:26px;display:flex;flex-direction:column;justify-content:flex-end;border-radius:6px;overflow:hidden;background:var(--panel-2)}
+.stack .s-them{background:var(--them)} .stack .s-me{background:var(--me)}
+.col .m{font-size:10px;font-weight:800;color:var(--faint);margin-top:5px;text-transform:uppercase}
+.col.cur .m{color:var(--text)}
+
+/* weekday bars */
+.wd{display:flex;align-items:center;gap:10px;margin:7px 0}
+.wd .k{width:36px;font-size:13px;font-weight:800;color:var(--muted)}
+.wd .bar{flex:1;height:12px;background:var(--panel-2);border-radius:999px;overflow:hidden}
+.wd .bar div{height:100%;background:var(--faint);border-radius:999px}
+.wd.top .bar div{background:var(--accent)} .wd.top .k{color:var(--text)}
+.wd .c{width:24px;text-align:right;font-size:13px;font-weight:800}
+
+/* filters */
+.filters{display:flex;flex-direction:column;gap:10px;margin-bottom:6px}
+
+/* tab bar */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(10,11,14,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom)}
+.tabbar .in{max-width:560px;margin:0 auto;display:flex;height:var(--tab-h)}
+.tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--faint);font-size:11px;font-weight:800;min-height:44px}
+.tabbar svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tabbar button.on{color:var(--accent)}
+
+/* sheet + dialog */
+.overlay{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .18s}
+.overlay.open{opacity:1;pointer-events:auto}
+.sheet{width:100%;max-width:560px;background:var(--panel);border:1px solid var(--border);border-bottom:0;border-radius:22px 22px 0 0;padding:10px 16px calc(env(safe-area-inset-bottom) + 18px);transform:translateY(24px);transition:transform .2s ease;max-height:92dvh;overflow:auto}
+.overlay.open .sheet{transform:none}
+.grab{width:40px;height:5px;border-radius:9px;background:var(--border-2);margin:2px auto 12px}
+.sheet h3{font-size:22px}
+.sheet .actions{display:flex;gap:8px;margin-top:18px}
+.sheet .actions .btn{flex:1}
+#dialog{z-index:60;align-items:center;padding:20px}
+.dlg{width:100%;max-width:400px;background:var(--panel);border:1px solid var(--border-2);border-radius:20px;padding:20px}
+.dlg h3{font-size:19px;margin-bottom:8px}
+.dlg p{color:var(--muted);line-height:1.45;font-size:15px}
+.dlg-btns{display:flex;flex-direction:column;gap:8px;margin-top:18px}
+
+/* toast */
+#toast{position:fixed;left:50%;bottom:calc(var(--tab-h) + env(safe-area-inset-bottom) + 14px);transform:translate(-50%,20px);z-index:50;background:#E6E8EB;color:#07080A;border-radius:14px;padding:10px 10px 10px 16px;display:flex;align-items:center;gap:12px;font-weight:800;font-size:14px;opacity:0;pointer-events:none;transition:all .2s;max-width:calc(100% - 32px);box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+#toast button{background:#07080A;color:var(--accent);border-radius:10px;min-height:36px;padding:0 12px;font-weight:900}
+
+/* hearts */
+.hz{position:absolute;top:4px;right:5px;font-size:10px;font-weight:900;color:#F08DA8;line-height:1}
+.heart-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 14px;padding:10px 12px;background:var(--panel-2);border:1px solid var(--border-2);border-radius:14px}
+.heart-row .hl{font-weight:800;color:var(--muted);font-size:14px}
+.stepper{display:flex;align-items:center;gap:6px}
+.stepper button{width:44px;height:44px;border-radius:12px;background:var(--panel);border:1px solid var(--border-2);font-size:20px;font-weight:900}
+.stepper .hv{min-width:44px;text-align:center;font-weight:900;font-size:20px;color:#F08DA8}
+.c-heart{color:#F08DA8}
+.vh h1{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
+body.rev .vh h1::after{content:"♥";font-size:13px;color:#F08DA8;margin-left:6px;vertical-align:super}
+.foot{text-align:center;color:var(--faint);font-size:12px;margin-top:18px;line-height:1.5}
+</style>
+</head>
+
+<body>
+<main id="app">
+  <section id="view-today" class="view active"></section>
+  <section id="view-calendar" class="view"></section>
+  <section id="view-stats" class="view"></section>
+  <section id="view-history" class="view"></section>
+  <section id="view-settings" class="view"></section>
+</main>
+
+<nav class="tabbar" aria-label="Main">
+  <div class="in">
+    <button data-act="tab" data-tab="today" class="on" aria-label="Today">
+      <svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>Today</button>
+    <button data-act="tab" data-tab="calendar" aria-label="Calendar">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendar</button>
+    <button data-act="tab" data-tab="stats" aria-label="Stats">
+      <svg viewBox="0 0 24 24"><path d="M5 20V11M12 20V4M19 20v-6"/></svg>Stats</button>
+    <button data-act="tab" data-tab="history" aria-label="History">
+      <svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>History</button>
+    <button data-act="tab" data-tab="settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>Settings</button>
+  </div>
+</nav>
+
+<div id="sheet" class="overlay"><div class="sheet" id="sheetBody"></div></div>
+<div id="dialog" class="overlay"></div>
+<div id="welcome" class="overlay" style="z-index:70;align-items:center;padding:20px"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="importFile" accept="application/json,.json" hidden>
+
+<script>
+/* =========================================================
+   STORAGE
+   Everything lives in localStorage on this device only.
+   entries are keyed by date "YYYY-MM-DD".
+   loc: "them" = at partner's place, "me" = at my place, "apart" = apart (optional reason)
+   Names are entered on first launch and stored on this device only.
+   ========================================================= */
+const KEY = 'overnights.v1';
+const DEFAULTS = {
+  entries: {},
+  settings: { me: '', them: '', weekStart: 0, rollover: 6, heartLabel: 'Hearts' },
+  lastBackup: null
+};
+const clone = o => JSON.parse(JSON.stringify(o));
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return clone(DEFAULTS);
+    const d = JSON.parse(raw);
+    return {
+      entries: d.entries || {},
+      settings: { ...DEFAULTS.settings, ...(d.settings || {}) },
+      lastBackup: d.lastBackup || null
+    };
+  } catch (e) { return clone(DEFAULTS); }
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); return true; }
+  catch (e) { toast('Couldn’t save — storage unavailable'); return false; }
+}
+let S = load();
+
+/* =========================================================
+   DATE HELPERS (all local time — no UTC conversions)
+   ========================================================= */
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parse = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return ymd(d); };
+const diffDays = (a, b) => Math.round((parse(b) - parse(a)) / 864e5); // rounding absorbs DST hours
+const isDate = s => /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(parse(s));
+
+/* "Tonight" = today's date, unless it's before the rollover hour
+   (e.g. 1 AM still counts as last night). */
+function tonight() {
+  const d = new Date();
+  if (d.getHours() < S.settings.rollover) d.setDate(d.getDate() - 1);
+  return ymd(d);
+}
+const inGrace = () => S.settings.rollover > 0 && new Date().getHours() < S.settings.rollover;
+
+const fmtLong  = s => parse(s).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+const fmtRow   = s => parse(s).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+const fmtShort = s => parse(s).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+const monthName = (y, m) => new Date(y, m, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/* =========================================================
+   LABEL HELPERS
+   ========================================================= */
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nameOf = loc => loc === 'them' ? (S.settings.them || 'Partner') : (S.settings.me || 'Me');
+const poss = n => n + '’s';
+const at = loc => loc === 'apart' ? 'Apart' : (loc === 'me' && !S.settings.me) ? 'At my place' : 'At ' + poss(nameOf(loc));
+const letter = loc => loc === 'apart' ? '–' : (nameOf(loc).trim()[0] || '?').toUpperCase();
+/* Apart nights: loc "apart" with an optional reason */
+const REASONS = { trip: '✈️ Trip', work: '💼 Work', home: '🏠 Own place', sick: '🤒 Sick' };
+const together = e => !!e && e.loc !== 'apart';
+const reasonTxt = e => (e && e.loc === 'apart' && REASONS[e.reason]) || '';
+const chips = (act, cur) => `<div class="chips">${Object.entries(REASONS).map(([k, v]) =>
+  `<button class="chip ${cur === k ? 'on' : ''}" data-act="${act}" data-v="${k}">${v}</button>`).join('')}</div>`;
+const badge = loc => `<span class="badge ${loc}">${esc(letter(loc))}</span>`;
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const other = loc => loc === 'me' ? 'them' : 'me';
+const hearts = e => Math.max(0, Math.min(99, +(e && e.hearts) || 0));
+const hLabel = () => S.settings.heartLabel || 'Hearts';
+/* Hearts are hidden unless revealed (hold any screen title ~1s). Not saved — re-hides when you leave the app. */
+let revealed = false;
+const stepper = (act, n) => `<div class="stepper"><button data-act="${act}" data-d="-1" aria-label="Less">−</button>
+  <span class="hv">♥ ${n}</span><button data-act="${act}" data-d="1" aria-label="More">+</button></div>`;
+function setTonightHearts(delta) {
+  const t = tonight(), e = S.entries[t]; if (!together(e)) return;
+  e.hearts = Math.max(0, Math.min(99, hearts(e) + delta)); e.updated = Date.now();
+  save(); rerender();
+}
+
+/* =========================================================
+   STATS CALCULATIONS
+   ========================================================= */
+const sortedDates = () => Object.keys(S.entries).sort();
+
+function totals() {
+  const t = tonight(), ym = t.slice(0, 7), y = t.slice(0, 4);
+  // all/month/year/me/them count nights TOGETHER; apart nights are counted separately
+  let all = 0, month = 0, year = 0, me = 0, them = 0, apart = 0;
+  for (const [d, e] of Object.entries(S.entries)) {
+    if (!together(e)) { apart++; continue; }
+    all++; if (d.startsWith(ym)) month++; if (d.startsWith(y)) year++;
+    e.loc === 'me' ? me++ : them++;
+  }
+  return { all, month, year, me, them, apart };
+}
+
+function streaks() {
+  let longest = { n: 0 }, run = null;
+  for (const d of sortedDates().filter(d => together(S.entries[d]))) {
+    if (run && diffDays(run.end, d) === 1) { run.end = d; run.n++; }
+    else run = { start: d, end: d, n: 1 };
+    if (run.n > longest.n) longest = { ...run };
+  }
+  // Current streak: counts back from tonight, or from last night if tonight isn't logged yet
+  const t = tonight();
+  const tog = d => together(S.entries[d]);
+  let d = tog(t) ? t : (tog(addDays(t, -1)) ? addDays(t, -1) : null), cur = 0;
+  while (d && tog(d)) { cur++; d = addDays(d, -1); }
+  return { cur, longest };
+}
+
+/* Whose turn: the place used less recently */
+function whoseTurn() {
+  const ds = sortedDates().filter(d => together(S.entries[d])); if (!ds.length) return null;
+  const last = { me: null, them: null };
+  for (const d of ds) last[S.entries[d].loc] = d;
+  const t = tonight(), since = addDays(t, -29);
+  const recent = { me: 0, them: 0 };
+  for (const d of ds) if (d >= since) recent[S.entries[d].loc]++;
+  let loc;
+  if (!last.me) loc = 'me'; else if (!last.them) loc = 'them';
+  else loc = last.me < last.them ? 'me' : 'them';
+  return { loc, last: last[loc], ago: last[loc] ? diffDays(last[loc], t) : null, recent };
+}
+
+/* Longest gap between two nights together (apart-logged or unlogged nights in between) */
+function longestApart() {
+  const ds = sortedDates().filter(d => together(S.entries[d]));
+  let best = null;
+  for (let i = 1; i < ds.length; i++) {
+    const n = diffDays(ds[i - 1], ds[i]) - 1;
+    if (n > 0 && (!best || n >= best.n)) best = { n, from: addDays(ds[i - 1], 1), back: ds[i] };
+  }
+  return best;
+}
+/* Reunion: tonight is together and the previous night together was 3+ nights ago */
+function reunionGap() {
+  const t = tonight(); if (!together(S.entries[t])) return 0;
+  const prev = sortedDates().filter(d => d < t && together(S.entries[d])).pop();
+  if (!prev) return 0;
+  const n = diffDays(prev, t) - 1;
+  return n >= 2 ? n : 0;
+}
+
+function backupDue() {
+  const es = Object.values(S.entries); if (!es.length) return false;
+  const ref = S.lastBackup || Math.min(...es.map(e => e.created || Date.now()));
+  return Date.now() - ref > 30 * 864e5;
+}
+
+/* =========================================================
+   MUTATIONS (with undo)
+   ========================================================= */
+function mutate(keys, fn, msg) {
+  const prev = {};
+  keys.forEach(k => prev[k] = S.entries[k] ? { ...S.entries[k] } : null);
+  fn(); save(); rerender();
+  toast(msg, () => {
+    keys.forEach(k => prev[k] ? (S.entries[k] = prev[k]) : delete S.entries[k]);
+    save(); rerender(); toast('Undone');
+  });
+}
+
+function logTonight(loc) {
+  const t = tonight(), now = Date.now(), ex = S.entries[t];
+  mutate([t], () => {
+    S.entries[t] = { date: t, loc, note: ex?.note || '', hearts: loc === 'apart' ? 0 : hearts(ex),
+      reason: loc === 'apart' ? (ex?.reason || '') : '', created: ex?.created || now, updated: now };
+  }, loc === 'apart' ? 'Logged tonight · Apart' : `Logged tonight · ${at(loc)}`);
+}
+
+/* =========================================================
+   VIEW: TODAY
+   ========================================================= */
+function backupBanner() {
+  return backupDue()
+    ? `<div class="banner"><span>Time for a backup — it’s been over 30 days.</span><button data-act="export-json">Export</button></div>` : '';
+}
+
+function renderToday() {
+  const t = tonight(), e = S.entries[t], s = S.settings, tot = totals(), st = streaks();
+  let h = `<header class="vh"><div><h1>Overnights</h1>
+    <p class="sub">${esc(fmtLong(t))}${inGrace() ? ' · still counts as last night' : ''}</p></div></header>`;
+  h += backupBanner();
+
+  if (!e) {
+    h += `<div class="card"><h2>Tonight</h2>
+      <p class="muted small">Where are you two staying?</p>
+      <button class="big-choice them" data-act="log" data-loc="them">${badge('them')}
+        <span>I’m at ${esc(poss(s.them))}<small>${esc(at('them'))}</small></span></button>
+      <button class="big-choice me" data-act="log" data-loc="me">${badge('me')}
+        <span>${esc(poss(s.them))} at my place<small>${esc(at('me'))}</small></span></button>
+      <button class="apart-btn" data-act="log" data-loc="apart">Apart tonight</button>
+    </div>`;
+  } else if (e.loc === 'apart') {
+    h += `<div class="card"><h2>Tonight</h2>
+      <div class="logged">${badge('apart')}<div><div class="where c-apart">Apart tonight</div>
+        <div class="muted small" style="margin-top:4px">${e.note ? esc(e.note) : 'Add a reason (optional)'}</div></div></div>
+      ${chips('reason', e.reason)}
+      <div class="btnrow">
+        <button class="btn" data-act="edit" data-date="${t}">${e.note ? 'Edit' : 'Add note'}</button>
+        <button class="btn ghost" data-act="undo-tonight">Undo</button>
+      </div></div>`;
+  } else {
+    const gap = reunionGap();
+    if (gap) h += `<div class="reunion"><span class="e">🎉</span><span>Back together after <b>${plural(gap, 'night')}</b> apart</span></div>`;
+    h += `<div class="card"><h2>Tonight</h2>
+      <div class="logged">${badge(e.loc)}<div><div class="where c-${e.loc}">${esc(at(e.loc))}</div>
+        ${e.note ? `<div class="muted small" style="margin-top:4px">${esc(e.note)}</div>` : `<div class="muted small" style="margin-top:4px">Logged ✓</div>`}</div></div>
+      ${revealed ? `<div class="heart-row"><span class="hl">${esc(hLabel())}</span>${stepper('heart', hearts(e))}</div>` : ''}
+      <div class="btnrow">
+        <button class="btn" data-act="switch">Switch to ${esc(poss(nameOf(other(e.loc))))}</button>
+        <button class="btn" data-act="edit" data-date="${t}">${e.note ? 'Edit' : 'Add note'}</button>
+        <button class="btn ghost" data-act="undo-tonight">Undo</button>
+      </div></div>`;
+  }
+
+  h += `<div class="grid3" style="margin-bottom:12px">
+    <div class="stat"><div class="num md">${tot.month}</div><div class="lbl">This month</div></div>
+    <div class="stat"><div class="num md">${st.cur}</div><div class="lbl">Streak</div></div>
+    <div class="stat"><div class="num md">${tot.all}</div><div class="lbl">All-time</div></div></div>`;
+
+  h += turnCard();
+  h += `<button class="btn block" data-act="add" style="margin-bottom:12px">+ Log a past night</button>`;
+
+  const recent = sortedDates().reverse().slice(0, 5);
+  if (recent.length) {
+    h += `<div class="card"><div class="row between"><h2 style="margin:0">Recent</h2>
+      <button class="small muted" data-act="tab" data-tab="history" style="font-weight:800;min-height:44px">See all ›</button></div>
+      <div class="list">${recent.map(itemRow).join('')}</div></div>`;
+  } else {
+    h += `<div class="card empty"><div class="moon">🌙</div><b>No nights logged yet</b>
+      Tap a button above to log tonight, or backfill past nights.</div>`;
+  }
+  $('#view-today').innerHTML = h;
+}
+
+function turnCard() {
+  const w = whoseTurn(); if (!w) return '';
+  const who = w.loc === 'me' ? 'Your place' : poss(S.settings.them) + ' place';
+  const lastTxt = w.last
+    ? (w.ago === 0 ? 'Last night there was tonight' : `Last night there: ${plural(w.ago, 'day')} ago`)
+    : 'No nights there yet';
+  return `<div class="card"><h2>Whose turn?</h2>
+    <div class="row">${badge(w.loc)}<div><div style="font-weight:900;font-size:18px">${esc(who)} is up next</div>
+    <div class="muted small">${esc(lastTxt)} · Last 30 days: ${w.recent.them} at ${esc(poss(S.settings.them))}, ${w.recent.me} at ${esc(poss(S.settings.me))}</div></div></div></div>`;
+}
+
+function itemRow(d) {
+  const e = S.entries[d];
+  return `<button class="item" data-act="edit" data-date="${d}">${badge(e.loc)}
+    <div style="min-width:0"><div class="t">${esc(fmtRow(d))}</div><div class="n">${esc(at(e.loc))}${reasonTxt(e) ? ' · ' + esc(reasonTxt(e)) : ''}${revealed && hearts(e) ? ` · <span class="c-heart">♥ ${hearts(e)}</span>` : ''}${e.note ? ' · ' + esc(e.note) : ''}</div></div>
+    <span class="chev">›</span></button>`;
+}
+
+/* =========================================================
+   VIEW: CALENDAR
+   ========================================================= */
+let calM = null; // "YYYY-MM"
+
+function renderCalendar() {
+  if (!calM) calM = tonight().slice(0, 7);
+  const [y, m] = calM.split('-').map(Number);
+  const first = new Date(y, m - 1, 1), days = new Date(y, m, 0).getDate();
+  const ws = S.settings.weekStart, offset = (first.getDay() - ws + 7) % 7, t = tonight();
+  let me = 0, them = 0, apart = 0, cells = '';
+  for (let i = 0; i < offset; i++) cells += `<div class="day pad"></div>`;
+  for (let d = 1; d <= days; d++) {
+    const key = `${y}-${pad(m)}-${pad(d)}`, e = S.entries[key];
+    if (e) e.loc === 'me' ? me++ : e.loc === 'them' ? them++ : apart++;
+    const cls = ['day', e ? e.loc : '', key === t ? 'today' : '', key > t ? 'future' : ''].join(' ');
+    cells += `<button class="${cls}" data-act="day" data-date="${key}" aria-label="${esc(fmtRow(key))}${e ? ', ' + esc(at(e.loc)) : ''}">
+      <span class="dn">${d}</span>${revealed && hearts(e) ? `<span class="hz">♥${hearts(e) > 1 ? hearts(e) : ''}</span>` : ''}${e ? `<span class="L">${esc(letter(e.loc))}</span>` : ''}${e?.note ? '<span class="dot"></span>' : ''}</button>`;
+  }
+  const heads = Array.from({ length: 7 }, (_, i) => `<div>${WD[(i + ws) % 7]}</div>`).join('');
+  $('#view-calendar').innerHTML = `
+    <header class="vh"><div><h1>${esc(monthName(y, m - 1))}</h1>
+      <p class="sub">${plural(me + them, 'night')} · ${them} at ${esc(poss(S.settings.them))} · ${me} at ${esc(poss(S.settings.me))}${apart ? ` · ${apart} apart` : ''}</p></div></header>
+    <div class="row between" style="margin-bottom:12px">
+      <div class="cal-nav"><button class="icon-btn" data-act="cal" data-d="-1" aria-label="Previous month">‹</button>
+      <button class="icon-btn" data-act="cal" data-d="1" aria-label="Next month">›</button></div>
+      <button class="btn" data-act="cal-today">Today</button></div>
+    <div class="card"><div class="wk">${heads}</div><div class="cal" id="calGrid">${cells}</div>
+      <div class="legend"><span>${badge('them')} ${esc(poss(S.settings.them))}</span><span>${badge('me')} ${esc(poss(S.settings.me))}</span><span>${badge('apart')} Apart</span></div></div>
+    <p class="foot">Tap a day to add or edit · swipe to change months</p>`;
+  attachSwipe($('#calGrid'));
+}
+
+function shiftMonth(delta) {
+  const [y, m] = calM.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  calM = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+  renderCalendar();
+}
+function attachSwipe(el) {
+  let x0 = null, y0 = null;
+  el.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+  el.addEventListener('touchend', e => {
+    if (x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) shiftMonth(dx < 0 ? 1 : -1);
+    x0 = null;
+  });
+}
+
+/* =========================================================
+   VIEW: STATS
+   ========================================================= */
+function renderStats() {
+  const tot = totals(), s = S.settings;
+  let h = `<header class="vh"><div><h1>Stats</h1><p class="sub">${plural(tot.all, 'night')} together${tot.apart ? ` · ${tot.apart} apart` : ''}</p></div></header>`;
+  if (!tot.all && !tot.apart) {
+    $('#view-stats').innerHTML = h + `<div class="card empty"><div class="moon">📊</div><b>Nothing to chart yet</b>Log a few nights and your stats will show up here.</div>`;
+    return;
+  }
+  const st = streaks();
+  const pThem = tot.all ? Math.round(tot.them / tot.all * 100) : 0, pMe = tot.all ? 100 - pThem : 0;
+
+  h += `<div class="grid3" style="margin-bottom:12px">
+    <div class="stat"><div class="num md">${tot.month}</div><div class="lbl">This month</div></div>
+    <div class="stat"><div class="num md">${tot.year}</div><div class="lbl">This year</div></div>
+    <div class="stat"><div class="num md">${tot.all}</div><div class="lbl">All-time</div></div></div>`;
+
+  h += `<div class="card"><h2>Where</h2>
+    <div class="row between"><div><div class="num c-them">${tot.them}</div><div class="lbl">${esc(at('them'))}</div></div>
+    <div style="text-align:right"><div class="num c-me">${tot.me}</div><div class="lbl">${esc(at('me'))}</div></div></div>
+    <div class="split"><div style="width:${pThem}%;background:var(--them)"></div><div style="width:${pMe}%;background:var(--me)"></div></div>
+    <div class="row between small muted" style="font-weight:800"><span>${pThem}%</span><span>${pMe}%</span></div></div>`;
+
+  h += `<div class="grid2" style="margin-bottom:12px">
+    <div class="stat"><div class="num">${st.cur}</div><div class="lbl">Current streak</div></div>
+    <div class="stat"><div class="num">${st.longest.n}</div><div class="lbl">Longest streak</div>
+      ${st.longest.n ? `<div class="muted small" style="margin-top:4px">${esc(fmtShort(st.longest.start))}${st.longest.n > 1 ? ' – ' + esc(fmtShort(st.longest.end)) : ''}</div>` : ''}</div></div>`;
+
+  // Together vs apart (only once an apart night has been logged)
+  if (tot.apart) {
+    const logged = tot.all + tot.apart, rate = Math.round(tot.all / logged * 100);
+    const wT = tot.them / logged * 100, wM = tot.me / logged * 100, wA = tot.apart / logged * 100;
+    const la = longestApart();
+    const rc = {}; for (const e of Object.values(S.entries)) if (e.loc === 'apart' && REASONS[e.reason]) rc[e.reason] = (rc[e.reason] || 0) + 1;
+    const rlist = Object.entries(rc).sort((a, b) => b[1] - a[1]);
+    h += `<div class="card"><h2>Together vs apart</h2>
+      <div class="row between"><div><div class="num">${rate}%</div><div class="lbl">Together</div></div>
+        <div style="text-align:right"><div class="muted small" style="font-weight:800">${tot.all} of ${plural(logged, 'logged night')}</div></div></div>
+      <div class="split"><div style="width:${wT}%;background:var(--them)"></div><div style="width:${wM}%;background:var(--me)"></div><div style="width:${wA}%;background:var(--apart)"></div></div>
+      <div class="legend" style="margin-top:4px"><span>${badge('them')} ${tot.them}</span><span>${badge('me')} ${tot.me}</span><span>${badge('apart')} ${tot.apart}</span></div>
+      ${la ? `<div class="row between" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+        <div><div class="num md">${la.n}</div><div class="lbl">Longest stretch apart</div></div>
+        <div class="muted small" style="text-align:right;font-weight:700">${esc(fmtShort(la.from))}${la.n > 1 ? ' – ' + esc(fmtShort(addDays(la.back, -1))) : ''}<br>Back together ${esc(fmtShort(la.back))}</div></div>` : ''}
+      ${rlist.length ? `<div class="chips" style="margin:12px 0 0">${rlist.map(([k, n]) => `<span class="chip on" style="display:inline-flex;align-items:center">${REASONS[k]} · ${n}</span>`).join('')}</div>` : ''}
+    </div>`;
+  }
+
+  // Last 12 months, stacked
+  const t = tonight(), base = parse(t.slice(0, 7) + '-01'), months = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(base.getFullYear(), base.getMonth() - i, 1);
+    months.push({ key: `${d.getFullYear()}-${pad(d.getMonth() + 1)}`, lab: d.toLocaleDateString(undefined, { month: 'short' }), me: 0, them: 0 });
+  }
+  const idx = Object.fromEntries(months.map((m, i) => [m.key, i]));
+  for (const [d, e] of Object.entries(S.entries)) { const i = idx[d.slice(0, 7)]; if (i !== undefined && together(e)) months[i][e.loc]++; }
+  const max = Math.max(1, ...months.map(m => m.me + m.them));
+  h += `<div class="card"><h2>Nights per month</h2><div class="chart">${months.map((m, i) => {
+    const n = m.me + m.them, hp = n / max * 100;
+    return `<div class="col ${i === 11 ? 'cur' : ''}"><div class="v">${n || ''}</div>
+      <div class="stack" style="height:${Math.max(hp, n ? 4 : 2)}%">
+        ${m.them ? `<div class="s-them" style="height:${m.them / n * 100}%"></div>` : ''}
+        ${m.me ? `<div class="s-me" style="height:${m.me / n * 100}%"></div>` : ''}</div>
+      <div class="m">${esc(m.lab)}</div></div>`;
+  }).join('')}</div>
+    <div class="legend"><span>${badge('them')} ${esc(poss(s.them))}</span><span>${badge('me')} ${esc(poss(s.me))}</span></div></div>`;
+
+  // Hearts
+  {
+    const ym = t.slice(0, 7), yr = t.slice(0, 4), since = addDays(t, -27);
+    let hAll = 0, hMonth = 0, hYear = 0, h28 = 0, hMe = 0, hThem = 0;
+    const hm = months.map(() => 0);
+    for (const [d, e] of Object.entries(S.entries)) {
+      const n = together(e) ? hearts(e) : 0; if (!n) continue;
+      hAll += n; if (d.startsWith(ym)) hMonth += n; if (d.startsWith(yr)) hYear += n; if (d >= since) h28 += n;
+      e.loc === 'me' ? hMe += n : hThem += n;
+      const i = idx[d.slice(0, 7)]; if (i !== undefined) hm[i] += n;
+    }
+    if (hAll && revealed) {
+      const hmax = Math.max(1, ...hm);
+      h += `<div class="card"><h2>${esc(hLabel())}</h2>
+        <div class="grid3" style="margin-bottom:6px">
+          <div><div class="num md c-heart">${hMonth}</div><div class="lbl">This month</div></div>
+          <div><div class="num md c-heart">${hYear}</div><div class="lbl">This year</div></div>
+          <div><div class="num md c-heart">${(h28 / 4).toFixed(1)}</div><div class="lbl">Per week (4 wk)</div></div></div>
+        <div class="chart" style="height:110px">${hm.map((n, i) => `<div class="col ${i === 11 ? 'cur' : ''}"><div class="v">${n || ''}</div>
+          <div class="stack" style="height:${Math.max(n / hmax * 100, n ? 4 : 2)}%">${n ? '<div style="height:100%;background:#F08DA8"></div>' : ''}</div>
+          <div class="m">${esc(months[i].lab)}</div></div>`).join('')}</div>
+        <div class="row between small muted" style="font-weight:800;margin-top:12px">
+          <span>${badge('them')} ♥ ${hThem}</span><span>${hAll} all-time</span><span>♥ ${hMe} ${badge('me')}</span></div></div>`;
+    }
+  }
+
+  // Weekdays
+  const wd = [0, 0, 0, 0, 0, 0, 0];
+  for (const [d, e] of Object.entries(S.entries)) if (together(e)) wd[parse(d).getDay()]++;
+  const wmax = Math.max(1, ...wd), tops = wd.map((c, i) => c === wmax ? WD[i] : null).filter(Boolean);
+  const order = Array.from({ length: 7 }, (_, i) => (i + s.weekStart) % 7);
+  h += `<div class="card"><h2>By weekday</h2><p style="font-weight:900;font-size:18px;margin-bottom:8px">Most often: ${esc(tops.join(' & '))}</p>
+    ${order.map(i => `<div class="wd ${wd[i] === wmax ? 'top' : ''}"><span class="k">${WD[i]}</span>
+      <div class="bar"><div style="width:${wd[i] / wmax * 100}%"></div></div><span class="c">${wd[i]}</span></div>`).join('')}</div>`;
+
+  h += turnCard();
+  $('#view-stats').innerHTML = h;
+}
+
+/* =========================================================
+   VIEW: HISTORY
+   ========================================================= */
+const H = { loc: 'all', from: '', to: '', q: '' };
+
+function renderHistory() {
+  const s = S.settings;
+  $('#view-history').innerHTML = `
+    <header class="vh"><div><h1>History</h1><p class="sub" id="histCount"></p></div></header>
+    <div class="filters">
+      <div class="seg" id="histSeg">
+        <button data-act="hist-loc" data-v="all" class="${H.loc === 'all' ? 'on' : ''}">All</button>
+        <button data-act="hist-loc" data-v="them" class="them ${H.loc === 'them' ? 'on' : ''}">${esc(poss(s.them))}</button>
+        <button data-act="hist-loc" data-v="me" class="me ${H.loc === 'me' ? 'on' : ''}">${esc(poss(s.me))}</button>
+        <button data-act="hist-loc" data-v="apart" class="apart ${H.loc === 'apart' ? 'on' : ''}">Apart</button>
+      </div>
+      <div class="grid2">
+        <label><span class="dl">From</span><input type="date" class="inp ${H.from ? '' : 'blank'}" id="hFrom" value="${H.from}"></label>
+        <label><span class="dl">To</span><input type="date" class="inp ${H.to ? '' : 'blank'}" id="hTo" value="${H.to}"></label></div>
+      ${H.from || H.to ? '<button class="btn ghost block" data-act="hist-clear">Clear dates</button>' : ''}
+      <input type="search" class="inp" id="hQ" placeholder="Search notes…" value="${esc(H.q)}">
+    </div>
+    <div id="histList"></div>`;
+  $('#hFrom').onchange = e => { H.from = e.target.value; renderHistory(); };
+  $('#hTo').onchange = e => { H.to = e.target.value; renderHistory(); };
+  $('#hQ').oninput = e => { H.q = e.target.value; renderHistoryList(); };
+  renderHistoryList();
+}
+
+function renderHistoryList() {
+  const q = H.q.trim().toLowerCase();
+  const ds = sortedDates().reverse().filter(d => {
+    const e = S.entries[d];
+    if (H.loc !== 'all' && e.loc !== H.loc) return false;
+    if (H.from && d < H.from) return false;
+    if (H.to && d > H.to) return false;
+    if (q && !((e.note || '') + ' ' + reasonTxt(e)).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  $('#histCount').textContent = plural(ds.length, 'night');
+  if (!ds.length) {
+    $('#histList').innerHTML = `<div class="card empty" style="margin-top:12px"><div class="moon">🔎</div>
+      <b>${Object.keys(S.entries).length ? 'No matches' : 'No nights logged yet'}</b>
+      ${Object.keys(S.entries).length ? 'Try loosening the filters.' : 'Logged nights will appear here.'}</div>`;
+    return;
+  }
+  let h = '', cur = null, group = [];
+  const flush = () => {
+    if (!group.length) return;
+    const [y, m] = cur.split('-').map(Number);
+    h += `<div class="month-h"><span>${esc(monthName(y, m - 1))}</span><span>${group.length}</span></div>
+      <div class="card" style="padding:4px 14px"><div class="list">${group.map(itemRow).join('')}</div></div>`;
+    group = [];
+  };
+  for (const d of ds) { const k = d.slice(0, 7); if (k !== cur) { flush(); cur = k; } group.push(d); }
+  flush();
+  $('#histList').innerHTML = h;
+}
+
+/* =========================================================
+   VIEW: SETTINGS
+   ========================================================= */
+function renderSettings() {
+  const s = S.settings;
+  const lb = S.lastBackup ? `${new Date(S.lastBackup).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} (${plural(Math.floor((Date.now() - S.lastBackup) / 864e5), 'day')} ago)` : 'Never';
+  const hours = Array.from({ length: 9 }, (_, h) => `<option value="${h}" ${s.rollover === h ? 'selected' : ''}>${h === 0 ? 'Midnight (no grace period)' : h + ':00 AM'}</option>`).join('');
+  $('#view-settings').innerHTML = `
+    <header class="vh"><div><h1>Settings</h1></div></header>
+    ${backupBanner()}
+    <div class="card"><h2>Names</h2>
+      <label class="f" for="nMe">You</label><input class="inp" id="nMe" value="${esc(s.me)}" maxlength="20" autocomplete="off">
+      <label class="f" for="nThem">Partner</label><input class="inp" id="nThem" value="${esc(s.them)}" maxlength="20" autocomplete="off">
+      ${revealed ? `<label class="f" for="hLab">♥ marker label</label><input class="inp" id="hLab" value="${esc(hLabel())}" maxlength="20" autocomplete="off">` : ''}
+      <p class="muted small" style="margin-top:10px">Labels update everywhere — e.g. “${esc(at('them'))}”.</p></div>
+
+    <div class="card"><h2>Calendar</h2>
+      <label class="f">Week starts on</label>
+      <div class="seg"><button data-act="ws" data-v="0" class="${s.weekStart === 0 ? 'on' : ''}">Sunday</button>
+        <button data-act="ws" data-v="1" class="${s.weekStart === 1 ? 'on' : ''}">Monday</button></div>
+      <label class="f" for="roll">“Tonight” rolls over at</label>
+      <select class="inp" id="roll">${hours}</select>
+      <p class="muted small" style="margin-top:8px">Logging before this time counts as the previous night.</p></div>
+
+    <div class="card"><h2>Data</h2>
+      <div class="row between small" style="margin-bottom:12px"><span class="muted">Last backup</span><b>${esc(lb)}</b></div>
+      <div class="btnrow" style="margin-bottom:8px">
+        <button class="btn primary" data-act="export-json">Export JSON</button>
+        <button class="btn" data-act="export-csv">Export CSV</button></div>
+      <button class="btn block" data-act="import" style="margin-bottom:8px">Import JSON…</button>
+      <button class="btn danger block" data-act="clear">Clear all data</button>
+      <p class="muted small" style="margin-top:10px">JSON exports can be re-imported; CSV is for spreadsheets.</p></div>
+
+    <p class="foot">Data is stored only on this device, in this browser.<br>Nothing is sent anywhere.</p>`;
+
+  const setName = (k, el) => { const v = el.value.trim(); if (v) S.settings[k] = v; save(); };
+  $('#nMe').onchange = e => { setName('me', e.target); renderSettings(); };
+  $('#nThem').onchange = e => { setName('them', e.target); renderSettings(); };
+  if ($('#hLab')) $('#hLab').onchange = e => { S.settings.heartLabel = e.target.value.trim() || 'Hearts'; save(); toast('Saved'); };
+  $('#roll').onchange = e => { S.settings.rollover = +e.target.value; save(); toast('Saved'); };
+}
+
+/* =========================================================
+   EDITOR SHEET (add / edit / delete a night)
+   ========================================================= */
+let ed = null;
+
+function openEditor(date, presetLoc) {
+  const ex = date && S.entries[date];
+  ed = { orig: ex ? date : null, date: date || tonight(), loc: ex ? ex.loc : (presetLoc || 'them'), note: ex ? (ex.note || '') : '', hearts: hearts(ex), reason: ex?.reason || '' };
+  renderEditor();
+  $('#sheet').classList.add('open');
+}
+function renderEditor() {
+  $('#sheetBody').innerHTML = `<div class="grab"></div>
+    <h3>${ed.orig ? 'Edit night' : 'Log a night'}</h3>
+    <label class="f" for="edDate">Night of</label>
+    <input type="date" class="inp" id="edDate" value="${ed.date}" max="${tonight()}">
+    <label class="f">Where</label>
+    <div class="seg">
+      <button data-act="ed-loc" data-v="them" class="them ${ed.loc === 'them' ? 'on' : ''}">${esc(at('them'))}</button>
+      <button data-act="ed-loc" data-v="me" class="me ${ed.loc === 'me' ? 'on' : ''}">${esc(at('me'))}</button>
+      <button data-act="ed-loc" data-v="apart" class="apart ${ed.loc === 'apart' ? 'on' : ''}">Apart</button></div>
+    ${ed.loc === 'apart' ? `<label class="f">Reason (optional)</label>${chips('ed-reason', ed.reason).replace('margin:0 0 14px', '')}` : ''}
+    ${revealed && ed.loc !== 'apart' ? `<label class="f">${esc(hLabel())}</label>
+    <div class="heart-row" style="margin:0"><span class="hl">Count</span>${stepper('ed-heart', ed.hearts)}</div>` : ''}
+    <label class="f" for="edNote">Note (optional)</label>
+    <textarea class="inp" id="edNote" maxlength="200" placeholder="dinner + movie, snowed in…">${esc(ed.note)}</textarea>
+    <div class="actions">
+      ${ed.orig ? '<button class="btn danger" data-act="ed-del">Delete</button>' : '<button class="btn ghost" data-act="ed-cancel">Cancel</button>'}
+      <button class="btn primary" data-act="ed-save">Save</button></div>`;
+  $('#edDate').oninput = e => ed.date = e.target.value;
+  $('#edNote').oninput = e => ed.note = e.target.value;
+}
+function closeSheet() { $('#sheet').classList.remove('open'); ed = null; }
+
+async function saveEditor() {
+  const d = ed.date, t = tonight();
+  if (!isDate(d)) return toast('Pick a date');
+  if (d > t) return toast('Can’t log a future night');
+  if (d !== ed.orig && S.entries[d]) {
+    const ok = await dialog({
+      title: 'Night already logged',
+      msg: `${fmtRow(d)} is already logged as ${at(S.entries[d].loc)}. Overwrite it?`,
+      buttons: [{ label: 'Cancel', v: false, cls: 'ghost' }, { label: 'Overwrite', v: true, cls: 'danger' }]
+    });
+    if (!ok) return;
+  }
+  const now = Date.now(), orig = ed.orig, loc = ed.loc, note = ed.note.trim(),
+    hc = loc === 'apart' ? 0 : ed.hearts, reason = loc === 'apart' ? ed.reason : '';
+  const created = orig ? S.entries[orig].created : now;
+  const keys = orig && orig !== d ? [orig, d] : [d];
+  closeSheet();
+  mutate(keys, () => {
+    if (orig && orig !== d) delete S.entries[orig];
+    S.entries[d] = { date: d, loc, note, hearts: hc, reason, created: created || now, updated: now };
+  }, orig ? 'Night updated' : `Logged ${fmtShort(d)} · ${at(loc)}`);
+}
+
+function deleteEntry(d) {
+  closeSheet();
+  mutate([d], () => delete S.entries[d], `Deleted ${fmtShort(d)}`);
+}
+
+/* =========================================================
+   DIALOG + TOAST
+   ========================================================= */
+function dialog({ title, msg, buttons }) {
+  return new Promise(res => {
+    const w = $('#dialog');
+    w.innerHTML = `<div class="dlg" role="alertdialog" aria-modal="true"><h3>${esc(title)}</h3><p>${esc(msg)}</p>
+      <div class="dlg-btns">${buttons.map((b, i) => `<button class="btn ${b.cls || ''}" data-i="${i}">${esc(b.label)}</button>`).join('')}</div></div>`;
+    w.classList.add('open');
+    w.onclick = e => {
+      const b = e.target.closest('[data-i]');
+      if (!b && e.target !== w) return;
+      w.classList.remove('open'); w.onclick = null;
+      res(b ? buttons[+b.dataset.i].v : buttons[0].v); // backdrop = first (cancel) option
+    };
+  });
+}
+
+let toastTimer;
+function toast(msg, undo) {
+  const el = $('#toast');
+  el.innerHTML = `<span>${esc(msg)}</span>${undo ? '<button id="toastUndo">Undo</button>' : ''}`;
+  el.classList.add('show');
+  if (undo) $('#toastUndo').onclick = () => { el.classList.remove('show'); undo(); };
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), undo ? 5000 : 2200);
+}
+
+/* =========================================================
+   EXPORT / IMPORT / CLEAR
+   ========================================================= */
+async function shareOrDownload(name, text, type) {
+  const blob = new Blob([text], { type });
+  try {
+    const file = new File([blob], name, { type });
+    if (matchMedia('(pointer:coarse)').matches && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: name });
+      return true;
+    }
+  } catch (e) { if (e.name === 'AbortError') return false; }
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  return true;
+}
+
+async function exportJSON() {
+  const data = { app: 'Overnights', version: 1, exportedAt: new Date().toISOString(), settings: S.settings,
+    entries: sortedDates().map(d => S.entries[d]) };
+  const ok = await shareOrDownload(`overnights-backup-${ymd(new Date())}.json`, JSON.stringify(data, null, 2), 'application/json');
+  if (ok) { S.lastBackup = Date.now(); save(); rerender(); toast('Backup exported'); }
+}
+
+async function exportCSV() {
+  const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const rows = [['date', 'weekday', 'location', ...(revealed ? [hLabel()] : []), 'reason', 'note', 'created', 'updated'].join(',')];
+  for (const d of sortedDates()) {
+    const e = S.entries[d];
+    rows.push([d, WD[parse(d).getDay()], at(e.loc), ...(revealed ? [hearts(e)] : []), reasonTxt(e).replace(/^\S+\s/, ''), e.note, e.created ? new Date(e.created).toISOString() : '', e.updated ? new Date(e.updated).toISOString() : ''].map(q).join(','));
+  }
+  const ok = await shareOrDownload(`overnights-${ymd(new Date())}.csv`, rows.join('\n'), 'text/csv');
+  if (ok) toast('CSV exported');
+}
+
+async function handleImport(file) {
+  let data;
+  try { data = JSON.parse(await file.text()); } catch (e) { return toast('That file isn’t valid JSON'); }
+  const raw = Array.isArray(data?.entries) ? data.entries : (data?.entries && typeof data.entries === 'object' ? Object.values(data.entries) : null);
+  if (!raw) return toast('No Overnights entries found in that file');
+  const clean = {};
+  for (const e of raw) {
+    if (!e || !isDate(e.date) || !['me', 'them', 'apart'].includes(e.loc)) continue;
+    clean[e.date] = { date: e.date, loc: e.loc, note: String(e.note || '').slice(0, 200), hearts: e.loc === 'apart' ? 0 : hearts(e), reason: e.loc === 'apart' && REASONS[e.reason] ? e.reason : '', created: +e.created || Date.now(), updated: +e.updated || Date.now() };
+  }
+  const n = Object.keys(clean).length;
+  if (!n) return toast('No valid entries in that file');
+  const overlap = Object.keys(clean).filter(d => S.entries[d]).length;
+  const choice = await dialog({
+    title: `Import ${plural(n, 'night')}?`,
+    msg: `Merge adds them to what’s here${overlap ? ` (${overlap} overlapping date${overlap === 1 ? '' : 's'} — the most recently edited version wins)` : ''}. Replace wipes this device’s data first.`,
+    buttons: [{ label: 'Cancel', v: null, cls: 'ghost' }, { label: 'Merge', v: 'merge', cls: 'primary' }, { label: 'Replace everything', v: 'replace', cls: 'danger' }]
+  });
+  if (!choice) return;
+  if (choice === 'replace') {
+    const ok = await dialog({ title: 'Replace all data?', msg: `This deletes the ${plural(Object.keys(S.entries).length, 'night')} currently on this device and replaces them with the file’s ${n}.`,
+      buttons: [{ label: 'Cancel', v: false, cls: 'ghost' }, { label: 'Yes, replace', v: true, cls: 'danger' }] });
+    if (!ok) return;
+    S.entries = clean;
+    if (data.settings) S.settings = { ...DEFAULTS.settings, ...data.settings };
+  } else {
+    for (const [d, e] of Object.entries(clean)) {
+      if (!S.entries[d] || (e.updated || 0) > (S.entries[d].updated || 0)) S.entries[d] = e;
+    }
+  }
+  save(); rerender(); toast(`Imported ${plural(n, 'night')}`);
+}
+
+async function clearAll() {
+  const n = Object.keys(S.entries).length;
+  const a = await dialog({ title: 'Clear all data?', msg: `This permanently deletes ${plural(n, 'logged night')} from this device. Consider exporting a backup first.`,
+    buttons: [{ label: 'Cancel', v: false, cls: 'ghost' }, { label: 'Continue', v: true, cls: 'danger' }] });
+  if (!a) return;
+  const b = await dialog({ title: 'Are you absolutely sure?', msg: 'This can’t be undone.',
+    buttons: [{ label: 'Keep my data', v: false, cls: 'primary' }, { label: 'Delete everything', v: true, cls: 'danger' }] });
+  if (!b) return;
+  S = clone(DEFAULTS);
+  try { localStorage.removeItem(KEY); } catch (e) {}
+  save(); rerender(); toast('All data cleared');
+}
+
+/* =========================================================
+   NAVIGATION + EVENT DELEGATION
+   ========================================================= */
+const $ = s => document.querySelector(s);
+let current = 'today';
+const RENDER = { today: renderToday, calendar: renderCalendar, stats: renderStats, history: renderHistory, settings: renderSettings };
+
+function go(tab) {
+  current = tab;
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + tab));
+  document.querySelectorAll('.tabbar button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  RENDER[tab]();
+  window.scrollTo(0, 0);
+}
+function rerender() {
+  if (current === 'history') renderHistoryList(); else RENDER[current]();
+}
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const a = el.dataset.act, d = el.dataset.date;
+  switch (a) {
+    case 'tab': go(el.dataset.tab); break;
+    case 'log': logTonight(el.dataset.loc); break;
+    case 'switch': { const t = tonight(), ex = S.entries[t]; if (together(ex)) mutate([t], () => { S.entries[t] = { ...ex, loc: other(ex.loc), updated: Date.now() }; }, `Switched · ${at(other(ex.loc))}`); break; }
+    case 'undo-tonight': { const t = tonight(); mutate([t], () => delete S.entries[t], 'Tonight cleared'); break; }
+    case 'edit': case 'day': openEditor(d); break;
+    case 'add': openEditor(null); break;
+    case 'cal': shiftMonth(+el.dataset.d); break;
+    case 'cal-today': calM = tonight().slice(0, 7); renderCalendar(); break;
+    case 'hist-loc': H.loc = el.dataset.v; document.querySelectorAll('#histSeg button').forEach(b => b.classList.toggle('on', b === el)); renderHistoryList(); break;
+    case 'hist-clear': H.from = ''; H.to = ''; renderHistory(); break;
+    case 'ws': S.settings.weekStart = +el.dataset.v; save(); renderSettings(); break;
+    case 'ed-loc': ed.loc = el.dataset.v; renderEditor(); break;
+    case 'ed-reason': ed.reason = ed.reason === el.dataset.v ? '' : el.dataset.v; renderEditor(); break;
+    case 'reason': { const t = tonight(), ex = S.entries[t]; if (ex && ex.loc === 'apart') { ex.reason = ex.reason === el.dataset.v ? '' : el.dataset.v; ex.updated = Date.now(); save(); rerender(); } break; }
+    case 'heart': setTonightHearts(+el.dataset.d); break;
+    case 'ed-heart': ed.hearts = Math.max(0, Math.min(99, ed.hearts + +el.dataset.d)); el.parentElement.querySelector('.hv').textContent = '♥ ' + ed.hearts; break;
+    case 'ed-save': saveEditor(); break;
+    case 'ed-del': deleteEntry(ed.orig); break;
+    case 'ed-cancel': closeSheet(); break;
+    case 'export-json': exportJSON(); break;
+    case 'export-csv': exportCSV(); break;
+    case 'import': $('#importFile').click(); break;
+    case 'clear': clearAll(); break;
+  }
+});
+
+// Tap outside the sheet to close it
+$('#sheet').addEventListener('click', e => { if (e.target.id === 'sheet') closeSheet(); });
+$('#importFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) handleImport(f); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#sheet').classList.contains('open')) closeSheet(); });
+
+// Hold any screen title ~1s to show/hide hearts
+let holdTimer = null;
+function setReveal(v) {
+  revealed = v;
+  document.body.classList.toggle('rev', v);
+  try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) {}
+  if (ed) renderEditor();
+  if (current === 'history') renderHistory(); else rerender();
+}
+document.addEventListener('pointerdown', e => {
+  if (!e.target.closest('.vh h1')) return;
+  clearTimeout(holdTimer);
+  holdTimer = setTimeout(() => { holdTimer = null; setReveal(!revealed); }, 900);
+});
+['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, () => { clearTimeout(holdTimer); holdTimer = null; }));
+document.addEventListener('contextmenu', e => { if (e.target.closest('.vh h1')) e.preventDefault(); });
+// Re-hide whenever the app goes to the background or the phone locks
+document.addEventListener('visibilitychange', () => { if (document.hidden && revealed) setReveal(false); });
+window.addEventListener('pagehide', () => { if (revealed) setReveal(false); });
+
+// If the app sits open past midnight / rollover, refresh "tonight" when it comes back
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !ed) rerender(); });
+
+/* =========================================================
+   BOOT
+   ========================================================= */
+/* =========================================================
+   FIRST RUN: ask for both names (saved on this device only)
+   ========================================================= */
+function showWelcome() {
+  const w = $('#welcome');
+  w.innerHTML = `<div class="dlg"><div style="font-size:40px;margin-bottom:6px">🌙</div>
+    <h3>Welcome to Overnights</h3>
+    <p>Track the nights you two spend together: whose place, streaks, and stats. Everything stays on this phone.</p>
+    <label class="f" for="wMe">Your name</label><input class="inp" id="wMe" maxlength="20" autocomplete="off" value="${esc(S.settings.me)}">
+    <label class="f" for="wThem">Partner’s name</label><input class="inp" id="wThem" maxlength="20" autocomplete="off" value="${esc(S.settings.them)}">
+    <div class="dlg-btns"><button class="btn primary" id="wGo" disabled>Get started</button></div>
+    <p class="small" style="margin-top:10px;text-align:center">You can change these anytime in Settings.</p></div>`;
+  w.classList.add('open');
+  const ok = () => $('#wMe').value.trim() && $('#wThem').value.trim();
+  const chk = () => { $('#wGo').disabled = !ok(); };
+  $('#wMe').oninput = chk; $('#wThem').oninput = chk; chk();
+  $('#wGo').onclick = () => {
+    if (!ok()) return;
+    S.settings.me = $('#wMe').value.trim(); S.settings.them = $('#wThem').value.trim();
+    save(); w.classList.remove('open'); go(current);
+  };
+}
+
+go('today');
+if (!S.settings.me || !S.settings.them) showWelcome();
+</script>
+</body>
+</html>
