@@ -927,7 +927,7 @@ function deleteEntry(d) {
 /* =========================================================
    SHARE CARD (an image to text/AirDrop — never includes hearts)
    ========================================================= */
-let shareP = 'month', shareCanvas = null;
+let shareP = 'month', shareCanvas = null, shareHearts = false;
 const SHARE_P = [['month', 'This month'], ['last', 'Last month'], ['year', 'This year'], ['all', 'All time']];
 
 function periodRange(p) {
@@ -951,13 +951,28 @@ function periodStats(r) {
     wd[parse(d).getDay()]++;
     run = prev && diffDays(prev, d) === 1 ? run + 1 : 1; prev = d; best = Math.max(best, run);
   }
+  let hrt = 0;
+  for (const d of sortedDates()) if (d >= r.from && d <= r.to && together(S.entries[d])) hrt += hearts(S.entries[d]);
   const wmax = Math.max(...wd);
-  return { me, them, apart, all: me + them, best, fav: wmax ? WD[wd.indexOf(wmax)] : '—' };
+  return { me, them, apart, all: me + them, best, hrt, fav: wmax ? WD[wd.indexOf(wmax)] : '—' };
 }
 
 function rrect(x, X, Y, W, H, R) {
   x.beginPath(); x.moveTo(X + R, Y); x.arcTo(X + W, Y, X + W, Y + H, R); x.arcTo(X + W, Y + H, X, Y + H, R);
   x.arcTo(X, Y + H, X, Y, R); x.arcTo(X, Y, X + W, Y, R); x.closePath();
+}
+function heartShape(x, cx, top, w) {
+  // heart drawn with curves, w = width; top = y of the top of the lobes
+  const h = w * .9, y = top;
+  x.beginPath();
+  x.moveTo(cx, y + h * .3);
+  x.bezierCurveTo(cx, y + h * .1, cx - w * .1, y, cx - w * .27, y);
+  x.bezierCurveTo(cx - w * .5, y, cx - w * .5, y + h * .32, cx - w * .5, y + h * .32);
+  x.bezierCurveTo(cx - w * .5, y + h * .55, cx - w * .25, y + h * .78, cx, y + h);
+  x.bezierCurveTo(cx + w * .25, y + h * .78, cx + w * .5, y + h * .55, cx + w * .5, y + h * .32);
+  x.bezierCurveTo(cx + w * .5, y + h * .32, cx + w * .5, y, cx + w * .27, y);
+  x.bezierCurveTo(cx + w * .1, y, cx, y + h * .1, cx, y + h * .3);
+  x.closePath();
 }
 function crescent(x, cx, cy, r) {
   const c = document.createElement('canvas'); c.width = c.height = r * 3; const k = c.getContext('2d');
@@ -966,7 +981,7 @@ function crescent(x, cx, cy, r) {
   x.drawImage(c, cx - r * 1.4, cy - r * 1.6);
 }
 
-async function drawShareCard(p) {
+async function drawShareCard(p, withHearts) {
   try { await document.fonts.ready; } catch (e) {}
   const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H;
   const x = c.getContext('2d'), r = periodRange(p), st = periodStats(r);
@@ -986,10 +1001,27 @@ async function drawShareCard(p) {
   x.textBaseline = 'alphabetic'; x.fillStyle = TEXT; x.font = `900 78px ${F}`; x.fillText(r.title, L, 270);
 
   // big number
-  x.font = `900 300px ${F}`; x.fillStyle = TEXT; x.fillText(String(st.all), L - 8, 570);
+  // shrink the big number if it would collide with the hearts block (e.g. 100+ nights)
+  let bs = 300;
+  const fits = () => { x.font = `900 ${bs}px ${F}`; const w1 = x.measureText(String(st.all)).width;
+    x.font = `800 50px ${F}`; const w2 = Math.max(x.measureText('together').width, x.measureText('nights').width);
+    return L + w1 + 28 + w2 <= (withHearts ? L + BW - 220 : L + BW); };
+  while (bs > 160 && !fits()) bs -= 10;
+  x.font = `900 ${bs}px ${F}`; x.fillStyle = TEXT; x.fillText(String(st.all), L - 8, 570);
   const nw = x.measureText(String(st.all)).width;
   x.font = `800 50px ${F}`; x.fillStyle = MUTED;
   x.fillText(st.all === 1 ? 'night' : 'nights', L + nw + 28, 500); x.fillText('together', L + nw + 28, 560);
+
+  // optional hearts block (only when the user chose to include it)
+  if (withHearts) {
+    const hx = L + BW - 120, glow = x.createRadialGradient(hx, 420, 10, hx, 420, 190);
+    glow.addColorStop(0, 'rgba(229,72,77,.28)'); glow.addColorStop(1, 'rgba(229,72,77,0)');
+    x.fillStyle = glow; x.fillRect(hx - 200, 230, 400, 380);
+    heartShape(x, hx, 330, 150); x.fillStyle = '#E5484D'; x.fill();
+    x.textAlign = 'center'; x.fillStyle = TEXT; x.font = `900 84px ${F}`; x.fillText(String(st.hrt), hx, 560);
+    x.fillStyle = MUTED; x.font = `800 30px ${F}`; x.fillText(hLabel().toLowerCase(), hx, 604);
+    x.textAlign = 'left';
+  }
 
   // split bar
   const by = 640, bh = 40;
@@ -1043,17 +1075,22 @@ async function drawShareCard(p) {
   return c;
 }
 
-async function openShare() {
+async function openShare(keep) {
   ed = null;
+  if (!keep) shareHearts = false;      // always starts off
+  if (!revealed) shareHearts = false;  // never when hearts are hidden
   $('#sheetBody').innerHTML = `<div class="grab"></div><h3>Share card</h3>
     <div class="seg" style="margin-top:12px" id="shareSeg">${SHARE_P.map(([k, l]) => `<button data-act="share-p" data-v="${k}" class="${shareP === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+    ${revealed && Object.values(S.entries).some(e => hearts(e)) ? `<button class="heart-row" data-act="share-h" style="width:100%;margin:12px 0 0;cursor:pointer">
+      <span class="hl" style="display:flex;align-items:center;gap:8px">${HRT} Include ${esc(hLabel().toLowerCase())}</span>
+      <span class="seg" style="padding:2px;pointer-events:none"><span class="btn ${shareHearts ? 'primary' : 'ghost'}" style="min-height:32px;display:grid;place-items:center;padding:0 14px;font-size:13px">${shareHearts ? 'On' : 'Off'}</span></span></button>` : ''}
     <img class="share-img" id="shareImg" alt="Share card preview">
     <div class="actions"><button class="btn ghost" data-act="share-close">Close</button><button class="btn primary" data-act="share-go">Share</button></div>`;
   $('#sheet').classList.add('open');
   await renderShare();
 }
 async function renderShare() {
-  shareCanvas = await drawShareCard(shareP);
+  shareCanvas = await drawShareCard(shareP, shareHearts && revealed);
   const img = $('#shareImg'); if (img) img.src = shareCanvas.toDataURL('image/png');
 }
 function sendShare() {
@@ -1214,6 +1251,7 @@ document.addEventListener('click', e => {
     case 'share': openShare(); break;
     case 'share-p': shareP = el.dataset.v; document.querySelectorAll('#shareSeg button').forEach(b => b.classList.toggle('on', b === el)); renderShare(); break;
     case 'share-go': sendShare(); break;
+    case 'share-h': shareHearts = !shareHearts; openShare(true); break;
     case 'share-close': closeSheet(); break;
     case 'ed-del': deleteEntry(ed.orig); break;
     case 'ed-cancel': closeSheet(); break;
